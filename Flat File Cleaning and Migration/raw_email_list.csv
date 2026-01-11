@@ -1,0 +1,11 @@
+id,full_name,email,signup_source,signup_date,country
+1,John Doe,johndoe@gmail.com,Website,2024-01-12,Uganda
+2, jane smith ,JANESMITH@GMAIL.COM,Event,2024/01/13,Kenya
+3,Mike Brown,mikebrown@gmail,Website,2024-01-14,Uganda
+4,,sarah.k@outlook.com,Manual,2024-01-15,
+5,David Lee,davidlee@gmail.com,Website,2024-01-15,USA
+6,John Doe,johndoe@gmail.com,Event,2024-01-16,Uganda
+7,Anna White,anna.white@yahoo.com,Website,15-01-2024,UK
+8,Peter Black,peterblack@,Manual,2024-01-17,Uganda
+9,Mary Green,marygreen@gmail.com,Website,,Kenya
+10, paul stone ,paulstone@gmail.com,Event,2024-01-18,South Sudan
