@@ -1,0 +1,8 @@
+id,full_name,email,signup_source,signup_date,country
+1,John Doe,johndoe@gmail.com,Website,12/01/2024,Uganda
+2,jane smith,janesmith@gmail.com,Event,13/01/2024,Kenya
+3,Mike Brown,mikebrown@gmail,Website,14/01/2024,Uganda
+4,Unknown,sarah.k@outlook.com,Manual,15/01/2024,Unkown
+5,David Lee,davidlee@gmail.com,Website,15/01/2024,USA
+7,Anna White,anna.white@yahoo.com,Website,15/01/2024,UK
+10,paul stone,paulstone@gmail.com,Event,18/01/2024,South Sudan
