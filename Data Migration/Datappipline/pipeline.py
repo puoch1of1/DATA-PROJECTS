@@ -5,6 +5,11 @@ from mysql.connector import Error
 # 1. API endpoint
 API_URL = "https://jsonplaceholder.typicode.com/posts"
 
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Accept": "application/json"
+}
+
 # 2. Fetch data from API
 response = requests.get(API_URL)
 response.raise_for_status()  # fails fast if API breaks
