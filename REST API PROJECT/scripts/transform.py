@@ -1,4 +1,6 @@
 import pandas as pd
+import json
+import os
 
 def transform_population(json_data, indicator_name, ingestion_time):
     records = []
@@ -18,10 +20,22 @@ def transform_population(json_data, indicator_name, ingestion_time):
     
     return df
 
-# Load data from JSON file
-with open("../data/south_sudan_population.json") as f:
-    import json
-    data = json.load(f)
+def transform_indicator(json_file_path, output_file_path, indicator_name="Population", ingestion_time=None):
+    """Load, transform, and save population data"""
+    with open(json_file_path) as f:
+        data = json.load(f)
+    
+    df = transform_population(data, indicator_name, ingestion_time)
+    df.to_csv(output_file_path, index=False)
+    return df
 
-df = transform_population(data)
-df.to_csv("../data/cleaned/south_sudan_clean.csv")
+# Main execution when run directly
+if __name__ == "__main__":
+    # Get the directory of this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.dirname(script_dir)
+    
+    json_path = os.path.join(project_dir, "data", "south_sudan_population.json")
+    output_path = os.path.join(project_dir, "data", "cleaned", "south_sudan_clean.csv")
+    
+    transform_indicator(json_path, output_path)
