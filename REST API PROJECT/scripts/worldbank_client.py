@@ -26,3 +26,12 @@ class WorldBankClient:
                             f"Attempt {attempt}: "
                             f"Status {response.status_code}"
                         )
+
+                except requests.exceptions.RequestException as e:
+                    print(f"Attempt {attempt}: {e}")
+
+                time.sleep(2)
+
+            raise RuntimeError(
+                f"Failed to fetch {indicator_code} after {self.retries} attempts"
+            )
