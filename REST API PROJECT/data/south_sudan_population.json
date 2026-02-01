@@ -1,0 +1,1052 @@
+[
+  {
+    "page": 1,
+    "pages": 1,
+    "per_page": 1000,
+    "total": 65,
+    "sourceid": "2",
+    "lastupdated": "2026-01-28"
+  },
+  [
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2024",
+      "value": 11943408,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2023",
+      "value": 11483374,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2022",
+      "value": 11021177,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2021",
+      "value": 10865780,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2020",
+      "value": 10698467,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2019",
+      "value": 10423384,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2018",
+      "value": 10122977,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2017",
+      "value": 10259154,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2016",
+      "value": 10830102,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2015",
+      "value": 11107561,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2014",
+      "value": 11235073,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2013",
+      "value": 11166275,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2012",
+      "value": 10756240,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2011",
+      "value": 10288109,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2010",
+      "value": 9745953,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2009",
+      "value": 9243556,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2008",
+      "value": 8817647,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2007",
+      "value": 8388788,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2006",
+      "value": 7976526,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2005",
+      "value": 7590143,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2004",
+      "value": 7233041,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2003",
+      "value": 6903127,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2002",
+      "value": 6596806,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2001",
+      "value": 6308391,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "2000",
+      "value": 6032267,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1999",
+      "value": 5771628,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1998",
+      "value": 5620068,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1997",
+      "value": 5509136,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1996",
+      "value": 5356925,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1995",
+      "value": 5225836,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1994",
+      "value": 5071184,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1993",
+      "value": 4956002,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1992",
+      "value": 4909749,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1991",
+      "value": 4836677,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1990",
+      "value": 4737633,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1989",
+      "value": 4713229,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1988",
+      "value": 4848029,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1987",
+      "value": 4962395,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1986",
+      "value": 4921240,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1985",
+      "value": 4834296,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1984",
+      "value": 4750627,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1983",
+      "value": 4661574,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1982",
+      "value": 4557686,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1981",
+      "value": 4447272,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1980",
+      "value": 4339030,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1979",
+      "value": 4232605,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1978",
+      "value": 4127657,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1977",
+      "value": 4024032,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1976",
+      "value": 3921910,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1975",
+      "value": 3821494,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1974",
+      "value": 3723259,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1973",
+      "value": 3627383,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1972",
+      "value": 3542497,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1971",
+      "value": 3468646,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1970",
+      "value": 3409614,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1969",
+      "value": 3365533,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1968",
+      "value": 3321528,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1967",
+      "value": 3277648,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1966",
+      "value": 3236423,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1965",
+      "value": 3189835,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1964",
+      "value": 3129918,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1963",
+      "value": 3072669,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1962",
+      "value": 3024308,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1961",
+      "value": 2976724,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    },
+    {
+      "indicator": {
+        "id": "SP.POP.TOTL",
+        "value": "Population, total"
+      },
+      "country": {
+        "id": "SS",
+        "value": "South Sudan"
+      },
+      "countryiso3code": "SSD",
+      "date": "1960",
+      "value": 2931559,
+      "unit": "",
+      "obs_status": "",
+      "decimal": 0
+    }
+  ]
+]

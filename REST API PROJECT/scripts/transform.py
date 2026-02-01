@@ -18,9 +18,9 @@ def transform_population(json_data):
     return df
 
 # Load data from JSON file
-with open("data/south_sudan_population.json") as f:
+with open("../data/south_sudan_population.json") as f:
     import json
     data = json.load(f)
 
 df = transform_population(data)
-df.to_csv("DATA-PROJECTS/REST API PROJECT/data/cleaned/south_sudan_clean.csv")
+df.to_csv("../data/cleaned/south_sudan_clean.csv")
