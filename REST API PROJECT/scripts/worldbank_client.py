@@ -4,7 +4,7 @@ import time
 class WorldBankClient:
     BASE_URL = "https://api.worldbank.org/V2"
 
-    def __init__(self, retries=3, timeout=10):
+    def __init__(self, retries=5, timeout=30):
         self.retries = retries
         self.timeout = timeout
 

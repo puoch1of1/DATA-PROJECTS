@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 
 from scripts.worldbank_client import WorldBankClient
@@ -17,7 +17,7 @@ INDICATORS = {
 
 def main():
     client = WorldBankClient()
-    ingestion_time = datetime.utcnow().isoformat()
+    ingestion_time = datetime.now(timezone.utc).isoformat()
 
     all_data = []
 
