@@ -8,30 +8,30 @@ class WorldBankClient:
         self.retries = retries
         self.timeout = timeout
 
-        def fetch_indicator(self, country_code, indicator_code):
-            url = (
-                f"{self.BASE_URL}/country/{country_code}/indicator/"
-                f"{indicator_code}?format=json&per_page=1000"
-            )
+    def fetch_indicator(self, country_code, indicator_code):
+        url = (
+            f"{self.BASE_URL}/country/{country_code}/indicator/"
+            f"{indicator_code}?format=json&per_page=1000"
+        )
 
-            for attempt in range(1, self.retries + 1):
-                try: 
-                    response = requests.get(url, timeout=self.timeout)
+        for attempt in range(1, self.retries + 1):
+            try: 
+                response = requests.get(url, timeout=self.timeout)
 
-                    if response.status_code == 200:
-                        return response.json()
-                    
-                    else: 
-                        print(
-                            f"Attempt {attempt}: "
-                            f"Status {response.status_code}"
-                        )
+                if response.status_code == 200:
+                    return response.json()
+                
+                else: 
+                    print(
+                        f"Attempt {attempt}: "
+                        f"Status {response.status_code}"
+                    )
 
-                except requests.exceptions.RequestException as e:
-                    print(f"Attempt {attempt}: {e}")
+            except requests.exceptions.RequestException as e:
+                print(f"Attempt {attempt}: {e}")
 
-                time.sleep(2)
+            time.sleep(2)
 
-            raise RuntimeError(
-                f"Failed to fetch {indicator_code} after {self.retries} attempts"
-            )
+        raise RuntimeError(
+            f"Failed to fetch {indicator_code} after {self.retries} attempts"
+        )

@@ -20,13 +20,13 @@ def transform_population(json_data, indicator_name, ingestion_time):
     
     return df
 
-def transform_indicator(json_file_path, output_file_path, indicator_name="Population", ingestion_time=None):
-    """Load, transform, and save population data"""
-    with open(json_file_path) as f:
-        data = json.load(f)
+def transform_indicator(json_data, indicator_name, ingestion_time=None, output_file_path=None):
+    """Transform population data from JSON"""
+    df = transform_population(json_data, indicator_name, ingestion_time)
     
-    df = transform_population(data, indicator_name, ingestion_time)
-    df.to_csv(output_file_path, index=False)
+    if output_file_path:
+        df.to_csv(output_file_path, index=False)
+    
     return df
 
 # Main execution when run directly
