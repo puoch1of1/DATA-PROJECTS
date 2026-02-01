@@ -1,6 +1,6 @@
 import pandas as pd
 
-def transform_population(json_data):
+def transform_population(json_data, indicator_name, ingestion_time):
     records = []
 
     for row in json_data[1]:
@@ -8,8 +8,9 @@ def transform_population(json_data):
             records.append({
                 "country": row["country"]["value"],
                 "year": int(row["date"]),
-                "indicator": "Population",
-                "value": row["value"]
+                "indicator": indicator_name,
+                "value": row["value"], 
+                "ingested_at": ingestion_time
             })
 
     df = pd.DataFrame(records)

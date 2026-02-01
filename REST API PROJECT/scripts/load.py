@@ -1,15 +1,18 @@
 import sqlite3
 import pandas as pd
 
-conn = sqlite3.connect(r"C:\Users\lomas\OneDrive\Desktop\DATA PROJECTS\DATA-PROJECTS\REST API PROJECT\database\worldbank.db")
+def load_to_sqlite(df, db_path, table_name):
+    conn = sqlite3.connect(db_path)
 
-df = pd.read_csv(r"C:\Users\lomas\OneDrive\Desktop\DATA PROJECTS\DATA-PROJECTS\REST API PROJECT\data\cleaned\south_sudan_clean.csv")
+    df.to_sql(
+        table_name,
+        conn,
+        if_exists="append",
+        index=False
+    )
 
-df.to_sql(
-    "development_indicators",
-    conn,
-    if_exists="replace",
-    index=False
-)
+    conn.close()
 
-conn.close()
+# Load the transformed data and save to SQLite
+df = pd.read_csv("../data/cleaned/south_sudan_clean.csv")
+load_to_sqlite(df, "../database/worldbank.db", "development_indicators")
