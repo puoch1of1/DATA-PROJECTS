@@ -10,6 +10,72 @@ import seaborn as sns
 from datetime import datetime, timedelta
 
 
+def bootstrap_mean_ci(series, n_boot=1000, ci=95, random_state=42):
+    """
+    Estimate a confidence interval for the mean using bootstrap resampling.
+
+    Args:
+        series: 1-D numeric data
+        n_boot: Number of bootstrap iterations
+        ci: Confidence level percentage
+        random_state: Seed for reproducibility
+
+    Returns:
+        tuple: (mean, lower_bound, upper_bound)
+    """
+    values = pd.Series(series).dropna().astype(float).values
+    if len(values) == 0:
+        return np.nan, np.nan, np.nan
+
+    rng = np.random.default_rng(random_state)
+    sample_means = np.empty(n_boot)
+
+    for i in range(n_boot):
+        sample = rng.choice(values, size=len(values), replace=True)
+        sample_means[i] = sample.mean()
+
+    alpha = (100 - ci) / 2
+    lower = np.percentile(sample_means, alpha)
+    upper = np.percentile(sample_means, 100 - alpha)
+    return values.mean(), lower, upper
+
+
+def permutation_test_correlation(x, y, n_perm=2000, random_state=42):
+    """
+    Compute a two-sided permutation-test p-value for Pearson correlation.
+
+    Args:
+        x: First numeric series
+        y: Second numeric series
+        n_perm: Number of permutations
+        random_state: Seed for reproducibility
+
+    Returns:
+        tuple: (observed_corr, p_value)
+    """
+    x = pd.Series(x).astype(float)
+    y = pd.Series(y).astype(float)
+    valid = x.notna() & y.notna()
+    x = x[valid].values
+    y = y[valid].values
+
+    if len(x) < 3:
+        return np.nan, np.nan
+
+    observed = np.corrcoef(x, y)[0, 1]
+    rng = np.random.default_rng(random_state)
+
+    extreme_count = 0
+    for _ in range(n_perm):
+        y_perm = rng.permutation(y)
+        perm_corr = np.corrcoef(x, y_perm)[0, 1]
+        if abs(perm_corr) >= abs(observed):
+            extreme_count += 1
+
+    p_value = (extreme_count + 1) / (n_perm + 1)
+    return observed, p_value
+
+
 def analyze_channel_growth(df):
     """
     Analyze which channels/categories grow fastest
@@ -200,6 +266,70 @@ def calculate_video_performance_trends(df):
                       'Avg_Likes', 'Avg_Comments', 'Avg_Engagement', 'Video_Count']
     
     return trends
+
+
+def detect_viral_outliers(df, view_quantile=0.95):
+    """
+    Detect high-performing outlier videos using a quantile threshold.
+
+    Args:
+        df: Cleaned videos DataFrame
+        view_quantile: Quantile threshold for viral videos
+
+    Returns:
+        DataFrame: Outlier videos with key metrics
+    """
+    threshold = df['Views'].quantile(view_quantile)
+    outliers = df[df['Views'] >= threshold].copy()
+    outliers['View_to_Median_Ratio'] = outliers['Views'] / max(df['Views'].median(), 1)
+    return outliers.sort_values('Views', ascending=False)
+
+
+def build_category_scorecard(df):
+    """
+    Build a normalized multi-metric scorecard for category benchmarking.
+
+    Args:
+        df: Cleaned videos DataFrame
+
+    Returns:
+        DataFrame: Category scorecard with consistency and composite score
+    """
+    category = df.groupby('Keyword').agg({
+        'Views': ['mean', 'std'],
+        'Likes': 'mean',
+        'Comments': 'mean',
+        'Engagement_Rate': 'mean',
+        'Title': 'count'
+    }).reset_index()
+
+    category.columns = [
+        'Keyword', 'Avg_Views', 'Std_Views', 'Avg_Likes',
+        'Avg_Comments', 'Avg_Engagement_Rate', 'Video_Count'
+    ]
+
+    # Lower variability is better, so consistency score is inverse of CV.
+    category['Views_CV'] = category['Std_Views'] / category['Avg_Views'].replace(0, np.nan)
+    category['Consistency_Score'] = 1 / (1 + category['Views_CV'].fillna(category['Views_CV'].max()))
+
+    metric_cols = ['Avg_Views', 'Avg_Likes', 'Avg_Comments', 'Avg_Engagement_Rate', 'Consistency_Score']
+    for col in metric_cols:
+        min_v = category[col].min()
+        max_v = category[col].max()
+        if max_v - min_v == 0:
+            category[f'Norm_{col}'] = 0.5
+        else:
+            category[f'Norm_{col}'] = (category[col] - min_v) / (max_v - min_v)
+
+    category['Composite_Score'] = (
+        category['Norm_Avg_Views'] * 0.30 +
+        category['Norm_Avg_Likes'] * 0.20 +
+        category['Norm_Avg_Comments'] * 0.20 +
+        category['Norm_Avg_Engagement_Rate'] * 0.20 +
+        category['Norm_Consistency_Score'] * 0.10
+    )
+
+    return category.sort_values('Composite_Score', ascending=False).reset_index(drop=True)
 
 
 def create_summary_statistics(df):
