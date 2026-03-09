@@ -332,6 +332,73 @@ def build_category_scorecard(df):
     return category.sort_values('Composite_Score', ascending=False).reset_index(drop=True)
 
 
+def forecast_next_month_category_performance(df, min_points=3):
+    """
+    Forecast next-month average views and engagement by category.
+
+    Uses a simple linear trend on monthly averages per category.
+
+    Args:
+        df: Cleaned videos DataFrame
+        min_points: Minimum monthly points required to build a trend
+
+    Returns:
+        DataFrame: Forecast table by category
+    """
+    monthly = (
+        df.assign(Year_Month=df['Published At'].dt.to_period('M').astype(str))
+        .groupby(['Keyword', 'Year_Month'])
+        .agg(
+            Avg_Views=('Views', 'mean'),
+            Avg_Engagement=('Engagement_Rate', 'mean'),
+            Video_Count=('Video ID', 'count')
+        )
+        .reset_index()
+    )
+
+    rows = []
+    for category, grp in monthly.groupby('Keyword'):
+        grp = grp.sort_values('Year_Month').reset_index(drop=True)
+        n = len(grp)
+        if n < min_points:
+            continue
+
+        x = np.arange(n)
+        v_coef = np.polyfit(x, grp['Avg_Views'].values, 1)
+        e_coef = np.polyfit(x, grp['Avg_Engagement'].values, 1)
+
+        next_x = n
+        pred_views = max(0, np.polyval(v_coef, next_x))
+        pred_eng = max(0, np.polyval(e_coef, next_x))
+
+        last_views = grp['Avg_Views'].iloc[-1]
+        last_eng = grp['Avg_Engagement'].iloc[-1]
+
+        rows.append({
+            'Keyword': category,
+            'Months_Used': n,
+            'Last_Month_Avg_Views': last_views,
+            'Forecast_Next_Month_Avg_Views': pred_views,
+            'Views_Forecast_Change_Pct': ((pred_views - last_views) / max(last_views, 1)) * 100,
+            'Last_Month_Avg_Engagement': last_eng,
+            'Forecast_Next_Month_Avg_Engagement': pred_eng,
+            'Engagement_Forecast_Change_Pct': ((pred_eng - last_eng) / max(last_eng, 1e-6)) * 100,
+            'Trend_Slope_Views': v_coef[0],
+            'Trend_Slope_Engagement': e_coef[0]
+        })
+
+    forecast = pd.DataFrame(rows)
+    if forecast.empty:
+        return forecast
+
+    forecast['Forecast_Momentum_Score'] = (
+        forecast['Views_Forecast_Change_Pct'] * 0.7 +
+        forecast['Engagement_Forecast_Change_Pct'] * 0.3
+    )
+
+    return forecast.sort_values('Forecast_Momentum_Score', ascending=False).reset_index(drop=True)
+
+
 def create_summary_statistics(df):
     """
     Generate comprehensive summary statistics
