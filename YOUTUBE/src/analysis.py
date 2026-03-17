@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import json
+from pathlib import Path
 from datetime import datetime, timedelta
 
 
@@ -124,10 +126,11 @@ def analyze_upload_frequency_vs_views(df):
         DataFrame: Upload frequency analysis
     """
     # Count videos per category per month/week
-    df['Year_Month'] = df['Published At'].dt.to_period('M')
+    local_df = df.copy()
+    local_df['Year_Month'] = local_df['Published At'].dt.to_period('M')
     
     # Calculate upload frequency
-    upload_freq = df.groupby(['Keyword', 'Year_Month']).agg({
+    upload_freq = local_df.groupby(['Keyword', 'Year_Month']).agg({
         'Title': 'count',
         'Views': 'mean',
         'Likes': 'mean',
@@ -138,13 +141,34 @@ def analyze_upload_frequency_vs_views(df):
                            'Avg_Views', 'Avg_Likes', 'Avg_Engagement']
     
     # Analyze correlation by category
-    correlation_analysis = upload_freq.groupby('Category').apply(
-        lambda x: pd.Series({
-            'Avg_Upload_Frequency': x['Videos_Uploaded'].mean(),
-            'Avg_Views': x['Avg_Views'].mean(),
-            'Correlation_Freq_Views': x['Videos_Uploaded'].corr(x['Avg_Views']) if len(x) > 1 else np.nan
+    def _corr_row(group):
+        corr, p_val = permutation_test_correlation(
+            group['Videos_Uploaded'],
+            group['Avg_Views'],
+            n_perm=1000
+        )
+
+        if pd.notna(p_val):
+            if p_val < 0.01:
+                significance = 'Very Strong Evidence'
+            elif p_val < 0.05:
+                significance = 'Strong Evidence'
+            elif p_val < 0.10:
+                significance = 'Weak Evidence'
+            else:
+                significance = 'No Reliable Evidence'
+        else:
+            significance = 'Insufficient Data'
+
+        return pd.Series({
+            'Avg_Upload_Frequency': group['Videos_Uploaded'].mean(),
+            'Avg_Views': group['Avg_Views'].mean(),
+            'Correlation_Freq_Views': corr,
+            'P_Value': p_val,
+            'Significance': significance
         })
-    ).round(2)
+
+    correlation_analysis = upload_freq.groupby('Category').apply(_corr_row).round(4)
     
     return correlation_analysis.reset_index(), upload_freq
 
@@ -423,6 +447,227 @@ def create_summary_statistics(df):
     }
     
     return summary
+
+
+def analyze_publish_timing(df, min_videos=3):
+    """
+    Identify the best publish windows by category and day-of-week.
+
+    Args:
+        df: Cleaned videos DataFrame
+        min_videos: Minimum number of videos required per bucket
+
+    Returns:
+        DataFrame: Ranked timing opportunities
+    """
+    timing = (
+        df.groupby(['Keyword', 'Day_of_Week'])
+        .agg(
+            Video_Count=('Video ID', 'count'),
+            Avg_Views=('Views', 'mean'),
+            Avg_Engagement=('Engagement_Rate', 'mean'),
+            Median_Views=('Views', 'median')
+        )
+        .reset_index()
+    )
+
+    timing = timing[timing['Video_Count'] >= min_videos].copy()
+    if timing.empty:
+        return timing
+
+    for col in ['Avg_Views', 'Avg_Engagement', 'Video_Count']:
+        min_v = timing[col].min()
+        max_v = timing[col].max()
+        if max_v - min_v == 0:
+            timing[f'Norm_{col}'] = 0.5
+        else:
+            timing[f'Norm_{col}'] = (timing[col] - min_v) / (max_v - min_v)
+
+    timing['Timing_Opportunity_Score'] = (
+        timing['Norm_Avg_Views'] * 0.45 +
+        timing['Norm_Avg_Engagement'] * 0.45 +
+        timing['Norm_Video_Count'] * 0.10
+    )
+
+    return timing.sort_values('Timing_Opportunity_Score', ascending=False).reset_index(drop=True)
+
+
+def build_engagement_confidence_intervals(df, min_videos=3):
+    """
+    Build bootstrap confidence intervals for engagement by category.
+
+    Args:
+        df: Cleaned videos DataFrame
+        min_videos: Minimum number of videos required in a category
+
+    Returns:
+        DataFrame: Mean engagement with confidence intervals
+    """
+    rows = []
+    for keyword, group in df.groupby('Keyword'):
+        if len(group) < min_videos:
+            continue
+        mean_val, lower, upper = bootstrap_mean_ci(group['Engagement_Rate'], n_boot=1500, ci=95)
+        rows.append({
+            'Keyword': keyword,
+            'Video_Count': len(group),
+            'Engagement_Mean': mean_val,
+            'Engagement_CI_Lower': lower,
+            'Engagement_CI_Upper': upper,
+            'Engagement_CI_Width': upper - lower
+        })
+
+    ci_df = pd.DataFrame(rows)
+    if ci_df.empty:
+        return ci_df
+
+    return ci_df.sort_values('Engagement_Mean', ascending=False).reset_index(drop=True)
+
+
+def generate_content_strategy_recommendations(df, comments_df=None, min_videos=5):
+    """
+    Generate category-level strategy recommendations from multiple signals.
+
+    Args:
+        df: Cleaned videos DataFrame
+        comments_df: Optional cleaned comments DataFrame
+        min_videos: Minimum videos required for recommendation eligibility
+
+    Returns:
+        DataFrame: Actionable strategy recommendations by category
+    """
+    scorecard = build_category_scorecard(df)
+    engagement = analyze_category_engagement(df)
+    forecast = forecast_next_month_category_performance(df)
+    timing = analyze_publish_timing(df, min_videos=3)
+
+    base = scorecard.merge(
+        engagement[['Keyword', 'Engagement_Score', 'Avg_Engagement_Rate', 'Video_Count']],
+        on='Keyword',
+        how='left',
+        suffixes=('', '_eng')
+    )
+
+    if not forecast.empty:
+        base = base.merge(
+            forecast[['Keyword', 'Views_Forecast_Change_Pct', 'Engagement_Forecast_Change_Pct', 'Forecast_Momentum_Score']],
+            on='Keyword',
+            how='left'
+        )
+    else:
+        base['Views_Forecast_Change_Pct'] = np.nan
+        base['Engagement_Forecast_Change_Pct'] = np.nan
+        base['Forecast_Momentum_Score'] = np.nan
+
+    top_timing = pd.DataFrame(columns=['Keyword', 'Best_Publish_Day', 'Best_Publish_Day_Score'])
+    if not timing.empty:
+        top_timing = (
+            timing.sort_values('Timing_Opportunity_Score', ascending=False)
+            .groupby('Keyword')
+            .head(1)
+            .rename(columns={
+                'Day_of_Week': 'Best_Publish_Day',
+                'Timing_Opportunity_Score': 'Best_Publish_Day_Score'
+            })[['Keyword', 'Best_Publish_Day', 'Best_Publish_Day_Score']]
+        )
+
+    base = base.merge(top_timing, on='Keyword', how='left')
+
+    if comments_df is not None and len(comments_df) > 0:
+        sentiment = analyze_sentiment_by_category(comments_df, df)
+        base = base.merge(
+            sentiment[['Keyword', 'Avg_Sentiment_Score']],
+            on='Keyword',
+            how='left'
+        )
+    else:
+        base['Avg_Sentiment_Score'] = np.nan
+
+    base = base[base['Video_Count'] >= min_videos].copy()
+    if base.empty:
+        return base
+
+    def _strategy_theme(row):
+        momentum = row.get('Forecast_Momentum_Score', np.nan)
+        if row['Composite_Score'] >= 0.70 and pd.notna(momentum) and momentum > 10:
+            return 'Scale Aggressively'
+        if row['Avg_Views'] >= base['Avg_Views'].median() and row['Avg_Engagement_Rate'] < base['Avg_Engagement_Rate'].median():
+            return 'Improve Engagement Quality'
+        if row['Avg_Engagement_Rate'] >= base['Avg_Engagement_Rate'].quantile(0.75):
+            return 'Niche Community Expansion'
+        return 'Defend and Optimize'
+
+    def _action(row):
+        day = row['Best_Publish_Day'] if pd.notna(row['Best_Publish_Day']) else 'peak audience day'
+        if row['Strategy_Theme'] == 'Scale Aggressively':
+            return f"Increase posting frequency and prioritize {day} releases with repeatable formats."
+        if row['Strategy_Theme'] == 'Improve Engagement Quality':
+            return f"Keep reach-oriented topics but add stronger hooks/CTAs and publish on {day}."
+        if row['Strategy_Theme'] == 'Niche Community Expansion':
+            return f"Expand this niche with series-based content and audience prompts on {day}."
+        return f"Maintain cadence, refine thumbnails/titles, and test one new format on {day}."
+
+    base['Strategy_Theme'] = base.apply(_strategy_theme, axis=1)
+    base['Primary_Action'] = base.apply(_action, axis=1)
+
+    base['Risk_Level'] = np.where(
+        base['Views_CV'] > base['Views_CV'].quantile(0.75),
+        'High Volatility',
+        'Moderate'
+    )
+
+    return base.sort_values('Composite_Score', ascending=False).reset_index(drop=True)
+
+
+def export_advanced_outputs(df, comments_df=None, output_dir='../data'):
+    """
+    Export a richer set of analytics artifacts for decision making.
+
+    Args:
+        df: Cleaned videos DataFrame
+        comments_df: Optional cleaned comments DataFrame
+        output_dir: Directory for output CSV/JSON files
+
+    Returns:
+        dict: Named output file paths
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    scorecard = build_category_scorecard(df)
+    forecast = forecast_next_month_category_performance(df)
+    viral = detect_viral_outliers(df, view_quantile=0.95)
+    engagement_ci = build_engagement_confidence_intervals(df)
+    strategy = generate_content_strategy_recommendations(df, comments_df=comments_df)
+    timing = analyze_publish_timing(df)
+    freq_sig, _ = analyze_upload_frequency_vs_views(df)
+
+    files = {
+        'category_scorecard': output_path / 'category_scorecard.csv',
+        'next_month_forecast': output_path / 'next_month_category_forecast.csv',
+        'viral_videos_95pct': output_path / 'viral_videos_95pct.csv',
+        'engagement_ci': output_path / 'engagement_ci_by_category.csv',
+        'strategy': output_path / 'strategy_recommendations.csv',
+        'publish_timing': output_path / 'publish_timing_recommendations.csv',
+        'upload_frequency_significance': output_path / 'upload_frequency_significance.csv',
+        'summary_json': output_path / 'analysis_summary.json'
+    }
+
+    scorecard.to_csv(files['category_scorecard'], index=False)
+    forecast.to_csv(files['next_month_forecast'], index=False)
+    viral.to_csv(files['viral_videos_95pct'], index=False)
+    engagement_ci.to_csv(files['engagement_ci'], index=False)
+    strategy.to_csv(files['strategy'], index=False)
+    timing.to_csv(files['publish_timing'], index=False)
+    freq_sig.to_csv(files['upload_frequency_significance'], index=False)
+
+    summary = create_summary_statistics(df)
+    summary['generated_at_utc'] = datetime.utcnow().isoformat()
+    summary['top_strategy_categories'] = strategy['Keyword'].head(5).tolist() if not strategy.empty else []
+    with open(files['summary_json'], 'w', encoding='utf-8') as fp:
+        json.dump(summary, fp, indent=2, default=str)
+
+    return {name: str(path) for name, path in files.items()}
 
 
 if __name__ == "__main__":
