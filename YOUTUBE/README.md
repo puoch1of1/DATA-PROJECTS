@@ -127,12 +127,14 @@ python src/analysis.py
 - Exports cleaned data
 
 ### Analysis Functions (`analysis.py`)
-- `analyze_channel_growth()`: Channel growth metrics
-- `analyze_upload_frequency_vs_views()`: Frequency correlation analysis
-- `analyze_category_engagement()`: Engagement scoring
-- `get_top_performing_videos()`: Top performers identification
-- `create_summary_statistics()`: Comprehensive statistics
+ - `analyze_publish_timing()`: Best day-of-week publish windows
+ - `build_engagement_confidence_intervals()`: Bootstrap confidence intervals by category
+ - `generate_content_strategy_recommendations()`: Category-level growth actions and risk flags
+ - `export_advanced_outputs()`: Exports full analytics artifact pack to CSV/JSON
 
+### End-to-End Pipeline Runner
+ - `src/run_pipeline.py` runs the full analysis in one command without opening the notebook.
+ - Writes core summaries and advanced outputs into the `data/` directory.
 ### Visualizations
 - Horizontal bar charts for channel growth
 - Scatter plots for upload frequency analysis
@@ -141,15 +143,27 @@ python src/analysis.py
 
 ## 📊 Sample Insights
 
+
+# Run full advanced pipeline (recommended for production outputs)
+python src/run_pipeline.py
 *Note: Run the analysis notebook to generate insights from your specific dataset*
+
+Optional arguments:
 
 The analysis typically reveals:
 - Which content categories attract the most viewers
 - Whether posting more frequently increases average views
 - Which categories generate the highest audience engagement
-- Trends in video performance over time
 
-## 🛠️ Customization
+Advanced pipeline outputs include:
+ - `data/category_scorecard.csv`
+ - `data/upload_frequency_significance.csv`
+ - `data/publish_timing_recommendations.csv`
+ - `data/strategy_recommendations.csv`
+ - `data/engagement_ci_by_category.csv`
+ - `data/next_month_category_forecast.csv`
+ - `data/viral_videos_95pct.csv`
+ - `data/analysis_summary.json`
 
 ### Modify Analysis Parameters
 
