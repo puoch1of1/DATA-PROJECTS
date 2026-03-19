@@ -51,6 +51,69 @@ def _safe_mean(series: pd.Series) -> float | None:
     return float(clean.mean())
 
 
+def plot_forecast_with_actuals(
+    historical_df: pd.DataFrame,
+    forecast_df: pd.DataFrame,
+    title: str,
+    y_label: str,
+    x_col: str = "date",
+    y_col: str = "temp_c",
+    forecast_col: str = "forecast",
+) -> go.Figure:
+    """Create a plot with historical data and forecast with confidence intervals."""
+    fig = go.Figure()
+    
+    # Historical data
+    if not historical_df.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=historical_df[x_col],
+                y=historical_df[y_col],
+                mode="lines",
+                name="Historical",
+                line={"color": "#1f77b4", "width": 2},
+            )
+        )
+    
+    # Forecast
+    if not forecast_df.empty:
+        # Confidence interval as filled area
+        fig.add_trace(
+            go.Scatter(
+                x=list(forecast_df[x_col]) + list(forecast_df[x_col][::-1]),
+                y=list(forecast_df["upper_ci"]) + list(forecast_df["lower_ci"][::-1]),
+                fill="toself",
+                fillcolor="rgba(255, 127, 14, 0.2)",
+                line={"color": "rgba(255, 127, 14, 0)"},
+                name="95% Confidence Interval",
+                hoverinfo="skip",
+            )
+        )
+        
+        # Forecast line
+        fig.add_trace(
+            go.Scatter(
+                x=forecast_df[x_col],
+                y=forecast_df[forecast_col],
+                mode="lines",
+                name="Forecast",
+                line={"color": "#ff7f0e", "width": 2, "dash": "dash"},
+            )
+        )
+    
+    fig.update_layout(
+        title=title,
+        xaxis_title="Date",
+        yaxis_title=y_label,
+        height=420,
+        hovermode="x unified",
+        margin={"l": 20, "r": 20, "t": 40, "b": 20},
+        legend={"orientation": "h", "y": 1.05, "x": 0},
+    )
+    
+    return fig
+
+
 @st.cache_data(ttl=1800)
 def load_nasa_temperature(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
     return fetch_nasa_daily_temperature(lat=lat, lon=lon, start=start, end=end)
