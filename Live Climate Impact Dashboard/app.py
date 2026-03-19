@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import warnings
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -12,6 +14,21 @@ from climate_clients import (
     fetch_noaa_weekly_co2,
     get_noaa_token,
 )
+from data_fetcher_extended import (
+    fetch_open_meteo_historical,
+    generate_synthetic_rainfall_data,
+    generate_synthetic_aqi_data,
+)
+from forecasting import (
+    prepare_timeseries,
+    forecast_arima,
+    forecast_sarima,
+    forecast_prophet,
+    generate_future_dates,
+    create_forecast_dataframe,
+)
+
+warnings.filterwarnings("ignore")
 
 st.set_page_config(
     page_title="Live Climate Impact Dashboard",
