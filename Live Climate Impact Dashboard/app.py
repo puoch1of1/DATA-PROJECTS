@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 import warnings
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -68,6 +69,84 @@ def _safe_mean(series: pd.Series) -> float | None:
     if clean.empty:
         return None
     return float(clean.mean())
+
+
+def _csv_bytes(df: pd.DataFrame) -> bytes:
+    return df.to_csv(index=False).encode("utf-8")
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def rolling_backtest_metrics(
+    ts_df: pd.DataFrame,
+    value_col: str,
+    model_name: str,
+    freq: str = "D",
+    horizon: int = 7,
+    min_train_size: int = 30,
+    max_windows: int = 6,
+    seasonal_period: int = 7,
+) -> dict:
+    data = prepare_timeseries(ts_df, value_col, "date")
+    if len(data) < (min_train_size + horizon + 1):
+        return {"success": False, "error": "Insufficient data for rolling backtest."}
+
+    candidate_train_ends = list(range(min_train_size, len(data) - horizon + 1, horizon))
+    if not candidate_train_ends:
+        return {"success": False, "error": "No rolling windows available."}
+
+    train_ends = candidate_train_ends[-max_windows:]
+    preds: list[float] = []
+    actuals: list[float] = []
+    windows_run = 0
+
+    for train_end in train_ends:
+        train_values = data[value_col].iloc[:train_end]
+        test_values = data[value_col].iloc[train_end : train_end + horizon].to_numpy(dtype=float)
+        if len(test_values) < horizon:
+            continue
+
+        if model_name == "ARIMA":
+            result = forecast_arima(train_values, periods=horizon, order=(1, 1, 1))
+        elif model_name == "SARIMA":
+            result = forecast_sarima(
+                train_values,
+                periods=horizon,
+                order=(1, 1, 1),
+                seasonal_order=(1, 1, 1, seasonal_period),
+            )
+        elif model_name == "Prophet":
+            prophet_input = data[["date", value_col]].iloc[:train_end].copy()
+            result = forecast_prophet(prophet_input, periods=horizon, freq=freq)
+        else:
+            return {"success": False, "error": f"Unknown model: {model_name}"}
+
+        if not result.get("success", False):
+            continue
+
+        forecast_values = np.asarray(result.get("forecast", []), dtype=float)
+        if len(forecast_values) < horizon:
+            continue
+
+        preds.extend(forecast_values[:horizon].tolist())
+        actuals.extend(test_values.tolist())
+        windows_run += 1
+
+    if not preds or not actuals:
+        return {"success": False, "error": "Backtest did not produce valid forecasts."}
+
+    pred_arr = np.asarray(preds, dtype=float)
+    actual_arr = np.asarray(actuals, dtype=float)
+    mae = float(np.mean(np.abs(actual_arr - pred_arr)))
+    rmse = float(np.sqrt(np.mean((actual_arr - pred_arr) ** 2)))
+
+    return {
+        "success": True,
+        "model": model_name,
+        "mae": mae,
+        "rmse": rmse,
+        "windows": windows_run,
+        "points": int(len(actual_arr)),
+    }
 
 
 def plot_forecast_with_actuals(
@@ -374,6 +453,34 @@ with tab2:
                     st.write("**Model Performance Metrics (Training Data)**")
                     metrics_df = pd.DataFrame(metrics_data)
                     st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+
+                backtest_rows = []
+                backtest_horizon = min(7, max(2, forecast_days // 4))
+                for model_name in forecast_models:
+                    result = rolling_backtest_metrics(
+                        ts_df,
+                        value_col="temp_c",
+                        model_name=model_name,
+                        freq="D",
+                        horizon=backtest_horizon,
+                        min_train_size=max(30, backtest_horizon * 3),
+                        max_windows=6,
+                        seasonal_period=7,
+                    )
+                    if result.get("success", False):
+                        backtest_rows.append(
+                            {
+                                "Model": model_name,
+                                "Rolling MAE": f"{result['mae']:.3f}",
+                                "Rolling RMSE": f"{result['rmse']:.3f}",
+                                "Windows": result["windows"],
+                                "Points": result["points"],
+                            }
+                        )
+
+                if backtest_rows:
+                    st.write("**Rolling Backtest (Out-of-Sample)**")
+                    st.dataframe(pd.DataFrame(backtest_rows), use_container_width=True, hide_index=True)
                 
                 # Plot forecasts
                 left_col, right_col = st.columns(2)
@@ -388,9 +495,23 @@ with tab2:
                         )
                         if idx % 2 == 0:
                             with left_col:
+                                st.download_button(
+                                    label=f"Download {model_name} Forecast CSV",
+                                    data=_csv_bytes(forecast_df),
+                                    file_name=f"temperature_forecast_{model_name.lower()}.csv",
+                                    mime="text/csv",
+                                    key=f"dl-temp-{model_name.lower()}",
+                                )
                                 st.plotly_chart(fig, use_container_width=True)
                         else:
                             with right_col:
+                                st.download_button(
+                                    label=f"Download {model_name} Forecast CSV",
+                                    data=_csv_bytes(forecast_df),
+                                    file_name=f"temperature_forecast_{model_name.lower()}.csv",
+                                    mime="text/csv",
+                                    key=f"dl-temp-{model_name.lower()}",
+                                )
                                 st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
@@ -425,8 +546,43 @@ with tab3:
                 forecast_df = create_forecast_dataframe(result, future_dates, "SARIMA")
                 if not result.get("success", False):
                     st.warning(f"Rainfall SARIMA failed: {result.get('error', 'Unknown error')}")
+
+            bt_result = rolling_backtest_metrics(
+                ts_df,
+                value_col="precip_mm",
+                model_name="SARIMA",
+                freq="D",
+                horizon=min(7, max(2, forecast_days // 4)),
+                min_train_size=30,
+                max_windows=6,
+                seasonal_period=7,
+            )
+            if bt_result.get("success", False):
+                st.write("**Rolling Backtest (Out-of-Sample)**")
+                st.dataframe(
+                    pd.DataFrame(
+                        [
+                            {
+                                "Model": "SARIMA",
+                                "Rolling MAE": f"{bt_result['mae']:.3f}",
+                                "Rolling RMSE": f"{bt_result['rmse']:.3f}",
+                                "Windows": bt_result["windows"],
+                                "Points": bt_result["points"],
+                            }
+                        ]
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
             
             if not forecast_df.empty:
+                st.download_button(
+                    label="Download Rainfall Forecast CSV",
+                    data=_csv_bytes(forecast_df),
+                    file_name="rainfall_forecast_sarima.csv",
+                    mime="text/csv",
+                    key="dl-rainfall-sarima",
+                )
                 fig = plot_forecast_with_actuals(
                     ts_df,
                     forecast_df,
@@ -470,8 +626,43 @@ with tab4:
                 forecast_df = create_forecast_dataframe(result, future_dates, "Prophet")
                 if not result.get("success", False):
                     st.warning(f"AQI Prophet failed: {result.get('error', 'Unknown error')}")
+
+            bt_result = rolling_backtest_metrics(
+                ts_df,
+                value_col="aqi",
+                model_name="Prophet",
+                freq="D",
+                horizon=min(7, max(2, forecast_days // 4)),
+                min_train_size=30,
+                max_windows=6,
+                seasonal_period=7,
+            )
+            if bt_result.get("success", False):
+                st.write("**Rolling Backtest (Out-of-Sample)**")
+                st.dataframe(
+                    pd.DataFrame(
+                        [
+                            {
+                                "Model": "Prophet",
+                                "Rolling MAE": f"{bt_result['mae']:.3f}",
+                                "Rolling RMSE": f"{bt_result['rmse']:.3f}",
+                                "Windows": bt_result["windows"],
+                                "Points": bt_result["points"],
+                            }
+                        ]
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
             
             if not forecast_df.empty:
+                st.download_button(
+                    label="Download AQI Forecast CSV",
+                    data=_csv_bytes(forecast_df),
+                    file_name="aqi_forecast_prophet.csv",
+                    mime="text/csv",
+                    key="dl-aqi-prophet",
+                )
                 fig = plot_forecast_with_actuals(
                     ts_df.rename(columns={"aqi": "y"}),
                     forecast_df,
@@ -505,7 +696,8 @@ with tab5:
         ts_df = prepare_timeseries(co2_df, "co2_ppm", "date")
         
         if len(ts_df) >= 12:
-            future_dates = generate_future_dates(ts_df["date"].iloc[-1], forecast_days // 7, freq="W")
+            co2_periods = max(1, forecast_days // 7)
+            future_dates = generate_future_dates(ts_df["date"].iloc[-1], co2_periods, freq="W")
             timeseries = ts_df["co2_ppm"]
             
             # Use both ARIMA and Prophet for CO2
@@ -514,12 +706,46 @@ with tab5:
             with col_left:
                 st.write("**ARIMA Forecast** (Long-term trends)")
                 with st.spinner("Running ARIMA..."):
-                    result = forecast_arima(timeseries, periods=forecast_days // 7, order=(2, 1, 1))
+                    result = forecast_arima(timeseries, periods=co2_periods, order=(2, 1, 1))
                     forecast_df_arima = create_forecast_dataframe(result, future_dates, "ARIMA")
                     if not result.get("success", False):
                         st.warning(f"CO2 ARIMA failed: {result.get('error', 'Unknown error')}")
+
+                bt_result = rolling_backtest_metrics(
+                    ts_df,
+                    value_col="co2_ppm",
+                    model_name="ARIMA",
+                    freq="W",
+                    horizon=max(2, min(4, co2_periods)),
+                    min_train_size=24,
+                    max_windows=5,
+                    seasonal_period=12,
+                )
+                if bt_result.get("success", False):
+                    st.dataframe(
+                        pd.DataFrame(
+                            [
+                                {
+                                    "Model": "ARIMA",
+                                    "Rolling MAE": f"{bt_result['mae']:.3f}",
+                                    "Rolling RMSE": f"{bt_result['rmse']:.3f}",
+                                    "Windows": bt_result["windows"],
+                                    "Points": bt_result["points"],
+                                }
+                            ]
+                        ),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
                 
                 if not forecast_df_arima.empty:
+                    st.download_button(
+                        label="Download CO2 ARIMA Forecast CSV",
+                        data=_csv_bytes(forecast_df_arima),
+                        file_name="co2_forecast_arima.csv",
+                        mime="text/csv",
+                        key="dl-co2-arima",
+                    )
                     fig = plot_forecast_with_actuals(
                         ts_df,
                         forecast_df_arima,
@@ -532,12 +758,46 @@ with tab5:
                 st.write("**Prophet Forecast** (Automatic seasonality)")
                 with st.spinner("Running Prophet..."):
                     prophet_input = ts_df[["date", "co2_ppm"]].copy()
-                    result = forecast_prophet(prophet_input, periods=forecast_days // 7, freq="W")
+                    result = forecast_prophet(prophet_input, periods=co2_periods, freq="W")
                     forecast_df_prophet = create_forecast_dataframe(result, future_dates, "Prophet")
                     if not result.get("success", False):
                         st.warning(f"CO2 Prophet failed: {result.get('error', 'Unknown error')}")
+
+                bt_result = rolling_backtest_metrics(
+                    ts_df,
+                    value_col="co2_ppm",
+                    model_name="Prophet",
+                    freq="W",
+                    horizon=max(2, min(4, co2_periods)),
+                    min_train_size=24,
+                    max_windows=5,
+                    seasonal_period=12,
+                )
+                if bt_result.get("success", False):
+                    st.dataframe(
+                        pd.DataFrame(
+                            [
+                                {
+                                    "Model": "Prophet",
+                                    "Rolling MAE": f"{bt_result['mae']:.3f}",
+                                    "Rolling RMSE": f"{bt_result['rmse']:.3f}",
+                                    "Windows": bt_result["windows"],
+                                    "Points": bt_result["points"],
+                                }
+                            ]
+                        ),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
                 
                 if not forecast_df_prophet.empty:
+                    st.download_button(
+                        label="Download CO2 Prophet Forecast CSV",
+                        data=_csv_bytes(forecast_df_prophet),
+                        file_name="co2_forecast_prophet.csv",
+                        mime="text/csv",
+                        key="dl-co2-prophet",
+                    )
                     fig = plot_forecast_with_actuals(
                         ts_df,
                         forecast_df_prophet,
