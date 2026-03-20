@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 import warnings
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -42,6 +41,26 @@ CITY_PRESETS = {
     "Juba, South Sudan": {"lat": 4.8594, "lon": 31.5713, "station": "HSSJ"},
     "London, UK": {"lat": 51.5072, "lon": -0.1276, "station": "EGLL"},
 }
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def load_nasa_temperature(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
+    return fetch_nasa_daily_temperature(lat=lat, lon=lon, start=start, end=end)
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def load_noaa_temperature(station_id: str, start: date, end: date, token: str | None) -> pd.DataFrame:
+    return fetch_noaa_daily_temperature(station_id=station_id, start=start, end=end, token=token)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_weekly_co2() -> pd.DataFrame:
+    return fetch_noaa_weekly_co2()
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def load_open_meteo(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
+    return fetch_open_meteo_historical(lat=lat, lon=lon, start=start, end=end)
 
 
 def _safe_mean(series: pd.Series) -> float | None:
@@ -152,30 +171,36 @@ if start > end:
     st.error("Start date cannot be later than end date.")
     st.stop()
 
+if not (-90 <= float(lat) <= 90) or not (-180 <= float(lon) <= 180):
+    st.error("Latitude must be in [-90, 90] and longitude must be in [-180, 180].")
+    st.stop()
+
+station = str(station).strip().upper()
+
 noaa_token = get_noaa_token()
 
 # Load historical data
 with st.spinner("Loading historical climate data..."):
     try:
-        nasa_df = fetch_nasa_daily_temperature(lat=float(lat), lon=float(lon), start=start, end=end)
+        nasa_df = load_nasa_temperature(lat=float(lat), lon=float(lon), start=start, end=end)
     except Exception as exc:
         st.warning(f"NASA data request failed: {exc}")
         nasa_df = pd.DataFrame(columns=["date", "temp_c"])
 
     try:
-        noaa_df = fetch_noaa_daily_temperature(station=str(station), start=start, end=end, token=noaa_token)
+        noaa_df = load_noaa_temperature(station_id=station, start=start, end=end, token=noaa_token)
     except Exception as exc:
         st.warning(f"NOAA station data unavailable for {station}: {exc}")
         noaa_df = pd.DataFrame(columns=["date", "tavg_c", "tmax_c", "tmin_c"])
 
     try:
-        co2_df = fetch_noaa_weekly_co2()
+        co2_df = load_weekly_co2()
     except Exception as exc:
         st.warning(f"NOAA CO2 request failed: {exc}")
         co2_df = pd.DataFrame(columns=["date", "co2_ppm", "trend_ppm"])
     
     try:
-        rainfall_df = fetch_open_meteo_historical(
+        rainfall_df = load_open_meteo(
             lat=float(lat), lon=float(lon), start=start, end=end
         )
         if rainfall_df.empty:
@@ -278,7 +303,8 @@ with tab1:
 
 with tab2:
     st.subheader("Temperature Anomaly Forecasting")
-    st.caption(f"Forecasting {forecast_days} days ahead using {', '.join(forecast_models)}")
+    selected_models_caption = ", ".join(forecast_models) if forecast_models else "no selected models"
+    st.caption(f"Forecasting {forecast_days} days ahead using {selected_models_caption}")
     
     if nasa_df.empty:
         st.warning("Insufficient historical temperature data for forecasting.")
@@ -289,73 +315,83 @@ with tab2:
         if len(ts_df) < 7:
             st.error("Need at least 7 days of historical data to forecast.")
         else:
-            future_dates = generate_future_dates(ts_df["date"].iloc[-1], forecast_days, freq="D")
-            timeseries = ts_df["temp_c"]
-            
-            forecast_results = {}
-            metrics_data = []
-            
-            if "ARIMA" in forecast_models:
-                with st.spinner("Running ARIMA..."):
-                    result = forecast_arima(timeseries, periods=forecast_days, order=(1, 1, 1))
-                    forecast_results["ARIMA"] = create_forecast_dataframe(result, future_dates, "ARIMA")
-                    if result["success"]:
-                        metrics_data.append({
-                            "Model": "ARIMA",
-                            "MAE": f"{result['mae']:.3f}" if result['mae'] else "N/A",
-                            "RMSE": f"{result['rmse']:.3f}" if result['rmse'] else "N/A",
-                        })
-            
-            if "SARIMA" in forecast_models:
-                with st.spinner("Running SARIMA..."):
-                    result = forecast_sarima(
-                        timeseries,
-                        periods=forecast_days,
-                        order=(1, 1, 1),
-                        seasonal_order=(1, 1, 1, 7),
-                    )
-                    forecast_results["SARIMA"] = create_forecast_dataframe(result, future_dates, "SARIMA")
-                    if result["success"]:
-                        metrics_data.append({
-                            "Model": "SARIMA",
-                            "MAE": f"{result['mae']:.3f}" if result['mae'] else "N/A",
-                            "RMSE": f"{result['rmse']:.3f}" if result['rmse'] else "N/A",
-                        })
-            
-            if "Prophet" in forecast_models:
-                with st.spinner("Running Facebook Prophet..."):
-                    prophet_input = ts_df[["date", "temp_c"]].copy()
-                    result = forecast_prophet(prophet_input, periods=forecast_days, freq="D")
-                    forecast_results["Prophet"] = create_forecast_dataframe(result, future_dates, "Prophet")
-                    metrics_data.append({
-                        "Model": "Prophet",
-                        "MAE": "Auto-tuned",
-                        "RMSE": "Auto-tuned",
-                    })
-            
-            # Model comparison metrics
-            if metrics_data:
-                st.write("**Model Performance Metrics (Training Data)**")
-                metrics_df = pd.DataFrame(metrics_data)
-                st.dataframe(metrics_df, use_container_width=True, hide_index=True)
-            
-            # Plot forecasts
-            left_col, right_col = st.columns(2)
-            
-            for idx, (model_name, forecast_df) in enumerate(forecast_results.items()):
-                if not forecast_df.empty:
-                    fig = plot_forecast_with_actuals(
-                        ts_df,
-                        forecast_df,
-                        title=f"Temperature Forecast: {model_name}",
-                        y_label="Temperature (°C)",
-                    )
-                    if idx % 2 == 0:
-                        with left_col:
-                            st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        with right_col:
-                            st.plotly_chart(fig, use_container_width=True)
+            if not forecast_models:
+                st.info("Select at least one forecast model from the sidebar.")
+            else:
+                future_dates = generate_future_dates(ts_df["date"].iloc[-1], forecast_days, freq="D")
+                timeseries = ts_df["temp_c"]
+                
+                forecast_results = {}
+                metrics_data = []
+                
+                if "ARIMA" in forecast_models:
+                    with st.spinner("Running ARIMA..."):
+                        result = forecast_arima(timeseries, periods=forecast_days, order=(1, 1, 1))
+                        forecast_results["ARIMA"] = create_forecast_dataframe(result, future_dates, "ARIMA")
+                        if result["success"]:
+                            metrics_data.append({
+                                "Model": "ARIMA",
+                                "MAE": f"{result['mae']:.3f}" if result["mae"] is not None else "N/A",
+                                "RMSE": f"{result['rmse']:.3f}" if result["rmse"] is not None else "N/A",
+                            })
+                        else:
+                            st.warning(f"ARIMA failed: {result.get('error', 'Unknown error')}")
+                
+                if "SARIMA" in forecast_models:
+                    with st.spinner("Running SARIMA..."):
+                        result = forecast_sarima(
+                            timeseries,
+                            periods=forecast_days,
+                            order=(1, 1, 1),
+                            seasonal_order=(1, 1, 1, 7),
+                        )
+                        forecast_results["SARIMA"] = create_forecast_dataframe(result, future_dates, "SARIMA")
+                        if result["success"]:
+                            metrics_data.append({
+                                "Model": "SARIMA",
+                                "MAE": f"{result['mae']:.3f}" if result["mae"] is not None else "N/A",
+                                "RMSE": f"{result['rmse']:.3f}" if result["rmse"] is not None else "N/A",
+                            })
+                        else:
+                            st.warning(f"SARIMA failed: {result.get('error', 'Unknown error')}")
+                
+                if "Prophet" in forecast_models:
+                    with st.spinner("Running Facebook Prophet..."):
+                        prophet_input = ts_df[["date", "temp_c"]].copy()
+                        result = forecast_prophet(prophet_input, periods=forecast_days, freq="D")
+                        forecast_results["Prophet"] = create_forecast_dataframe(result, future_dates, "Prophet")
+                        if result["success"]:
+                            metrics_data.append({
+                                "Model": "Prophet",
+                                "MAE": "Auto-tuned",
+                                "RMSE": "Auto-tuned",
+                            })
+                        else:
+                            st.warning(f"Prophet failed: {result.get('error', 'Unknown error')}")
+                
+                # Model comparison metrics
+                if metrics_data:
+                    st.write("**Model Performance Metrics (Training Data)**")
+                    metrics_df = pd.DataFrame(metrics_data)
+                    st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+                
+                # Plot forecasts
+                left_col, right_col = st.columns(2)
+                
+                for idx, (model_name, forecast_df) in enumerate(forecast_results.items()):
+                    if not forecast_df.empty:
+                        fig = plot_forecast_with_actuals(
+                            ts_df,
+                            forecast_df,
+                            title=f"Temperature Forecast: {model_name}",
+                            y_label="Temperature (°C)",
+                        )
+                        if idx % 2 == 0:
+                            with left_col:
+                                st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            with right_col:
+                                st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
     st.subheader("Rainfall Trend Analysis & Forecast")
@@ -387,6 +423,8 @@ with tab3:
                     seasonal_order=(1, 1, 1, 7),
                 )
                 forecast_df = create_forecast_dataframe(result, future_dates, "SARIMA")
+                if not result.get("success", False):
+                    st.warning(f"Rainfall SARIMA failed: {result.get('error', 'Unknown error')}")
             
             if not forecast_df.empty:
                 fig = plot_forecast_with_actuals(
@@ -430,6 +468,8 @@ with tab4:
                 prophet_input.columns = ["date", "y"]
                 result = forecast_prophet(prophet_input, periods=forecast_days, freq="D")
                 forecast_df = create_forecast_dataframe(result, future_dates, "Prophet")
+                if not result.get("success", False):
+                    st.warning(f"AQI Prophet failed: {result.get('error', 'Unknown error')}")
             
             if not forecast_df.empty:
                 fig = plot_forecast_with_actuals(
@@ -476,6 +516,8 @@ with tab5:
                 with st.spinner("Running ARIMA..."):
                     result = forecast_arima(timeseries, periods=forecast_days // 7, order=(2, 1, 1))
                     forecast_df_arima = create_forecast_dataframe(result, future_dates, "ARIMA")
+                    if not result.get("success", False):
+                        st.warning(f"CO2 ARIMA failed: {result.get('error', 'Unknown error')}")
                 
                 if not forecast_df_arima.empty:
                     fig = plot_forecast_with_actuals(
@@ -492,6 +534,8 @@ with tab5:
                     prophet_input = ts_df[["date", "co2_ppm"]].copy()
                     result = forecast_prophet(prophet_input, periods=forecast_days // 7, freq="W")
                     forecast_df_prophet = create_forecast_dataframe(result, future_dates, "Prophet")
+                    if not result.get("success", False):
+                        st.warning(f"CO2 Prophet failed: {result.get('error', 'Unknown error')}")
                 
                 if not forecast_df_prophet.empty:
                     fig = plot_forecast_with_actuals(
