@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 from io import StringIO
 import os
+import random
+import time
 from typing import Optional
 
 import pandas as pd
@@ -11,6 +13,7 @@ import requests
 NASA_POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 NOAA_DAILY_SUMMARIES_URL = "https://www.ncei.noaa.gov/access/services/data/v1"
 NOAA_CO2_WEEKLY_URL = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_weekly_mlo.csv"
+RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 def _iso_date(value: date) -> str:
@@ -19,6 +22,35 @@ def _iso_date(value: date) -> str:
 
 def _compact_date(value: date) -> str:
     return value.strftime("%Y%m%d")
+
+
+def _get_with_retry(
+    url: str,
+    *,
+    params: dict | None = None,
+    headers: dict | None = None,
+    timeout: int = 30,
+    max_retries: int = 3,
+    backoff_base_seconds: float = 1.0,
+) -> requests.Response:
+    last_error: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=timeout)
+            if response.status_code in RETRY_STATUS_CODES:
+                raise requests.HTTPError(f"Retryable HTTP status: {response.status_code}")
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt == max_retries:
+                break
+            sleep_seconds = (backoff_base_seconds * (2 ** attempt)) + random.uniform(0, 0.2)
+            time.sleep(sleep_seconds)
+
+    if last_error is None:
+        raise RuntimeError("Request failed without an explicit exception.")
+    raise last_error
 
 
 def fetch_nasa_daily_temperature(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
@@ -33,8 +65,7 @@ def fetch_nasa_daily_temperature(lat: float, lon: float, start: date, end: date)
         "format": "JSON",
     }
 
-    response = requests.get(NASA_POWER_URL, params=params, timeout=30)
-    response.raise_for_status()
+    response = _get_with_retry(NASA_POWER_URL, params=params, timeout=30)
     payload = response.json()
 
     daily = payload.get("properties", {}).get("parameter", {}).get("T2M", {})
@@ -69,8 +100,7 @@ def fetch_noaa_daily_temperature(
     if token:
         headers["token"] = token
 
-    response = requests.get(NOAA_DAILY_SUMMARIES_URL, params=params, headers=headers, timeout=30)
-    response.raise_for_status()
+    response = _get_with_retry(NOAA_DAILY_SUMMARIES_URL, params=params, headers=headers, timeout=30)
     records = response.json()
 
     if not records:
@@ -93,8 +123,7 @@ def fetch_noaa_daily_temperature(
 
 def fetch_noaa_weekly_co2() -> pd.DataFrame:
     """Fetch weekly atmospheric CO2 concentration from NOAA GML (Mauna Loa)."""
-    response = requests.get(NOAA_CO2_WEEKLY_URL, timeout=30)
-    response.raise_for_status()
+    response = _get_with_retry(NOAA_CO2_WEEKLY_URL, timeout=30)
 
     raw = pd.read_csv(StringIO(response.text), comment="#", header=None)
 
