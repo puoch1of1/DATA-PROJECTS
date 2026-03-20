@@ -53,7 +53,14 @@ def _get_with_retry(
     raise last_error
 
 
-def fetch_nasa_daily_temperature(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
+def fetch_nasa_daily_temperature(
+    lat: float,
+    lon: float,
+    start: date,
+    end: date,
+    max_retries: int = 3,
+    backoff_base_seconds: float = 1.0,
+) -> pd.DataFrame:
     """Fetch daily 2m air temperature (T2M) from NASA POWER."""
     params = {
         "parameters": "T2M",
@@ -65,7 +72,13 @@ def fetch_nasa_daily_temperature(lat: float, lon: float, start: date, end: date)
         "format": "JSON",
     }
 
-    response = _get_with_retry(NASA_POWER_URL, params=params, timeout=30)
+    response = _get_with_retry(
+        NASA_POWER_URL,
+        params=params,
+        timeout=30,
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
     payload = response.json()
 
     daily = payload.get("properties", {}).get("parameter", {}).get("T2M", {})
@@ -84,6 +97,8 @@ def fetch_noaa_daily_temperature(
     start: date,
     end: date,
     token: Optional[str] = None,
+    max_retries: int = 3,
+    backoff_base_seconds: float = 1.0,
 ) -> pd.DataFrame:
     """Fetch daily temperature summary from NOAA NCEI Daily Summaries API."""
     params = {
@@ -100,7 +115,14 @@ def fetch_noaa_daily_temperature(
     if token:
         headers["token"] = token
 
-    response = _get_with_retry(NOAA_DAILY_SUMMARIES_URL, params=params, headers=headers, timeout=30)
+    response = _get_with_retry(
+        NOAA_DAILY_SUMMARIES_URL,
+        params=params,
+        headers=headers,
+        timeout=30,
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
     records = response.json()
 
     if not records:
@@ -121,9 +143,14 @@ def fetch_noaa_daily_temperature(
     return frame
 
 
-def fetch_noaa_weekly_co2() -> pd.DataFrame:
+def fetch_noaa_weekly_co2(max_retries: int = 3, backoff_base_seconds: float = 1.0) -> pd.DataFrame:
     """Fetch weekly atmospheric CO2 concentration from NOAA GML (Mauna Loa)."""
-    response = _get_with_retry(NOAA_CO2_WEEKLY_URL, timeout=30)
+    response = _get_with_retry(
+        NOAA_CO2_WEEKLY_URL,
+        timeout=30,
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
 
     raw = pd.read_csv(StringIO(response.text), comment="#", header=None)
 
