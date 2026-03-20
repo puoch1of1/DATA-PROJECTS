@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-import json
-from io import StringIO
+from datetime import date
+import logging
 from typing import Optional
 
 import pandas as pd
@@ -12,6 +11,7 @@ import requests
 
 # Open-Meteo API for historical weather data (free, no auth required)
 OPEN_METEO_HISTORICAL_URL = "https://archive-api.open-meteo.com/v1/archive"
+logger = logging.getLogger(__name__)
 
 
 def fetch_open_meteo_historical(
@@ -68,7 +68,7 @@ def fetch_open_meteo_historical(
         return df.sort_values("date").reset_index(drop=True)
         
     except Exception as e:
-        print(f"Open-Meteo fetch error: {e}")
+        logger.warning("Open-Meteo fetch error: %s", e)
         return pd.DataFrame()
 
 
@@ -119,7 +119,7 @@ def fetch_noaa_cdc_precipitation(
         return df[["date", "precip_mm"]].sort_values("date").reset_index(drop=True)
         
     except Exception as e:
-        print(f"NOAA CDC precipitation fetch error: {e}")
+        logger.warning("NOAA CDC precipitation fetch error: %s", e)
         return pd.DataFrame()
 
 
@@ -146,7 +146,6 @@ def generate_synthetic_rainfall_data(
     
     np.random.seed(seed)
     
-    days = (end - start).days
     dates = pd.date_range(start=start, end=end, freq="D")
     
     # Create seasonal pattern (higher rainfall in certain months)
