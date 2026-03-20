@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from io import BytesIO
 import warnings
+from zipfile import ZipFile
 
 import numpy as np
 import pandas as pd
@@ -45,23 +47,68 @@ CITY_PRESETS = {
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def load_nasa_temperature(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
-    return fetch_nasa_daily_temperature(lat=lat, lon=lon, start=start, end=end)
+def load_nasa_temperature(
+    lat: float,
+    lon: float,
+    start: date,
+    end: date,
+    max_retries: int,
+    backoff_base_seconds: float,
+) -> pd.DataFrame:
+    return fetch_nasa_daily_temperature(
+        lat=lat,
+        lon=lon,
+        start=start,
+        end=end,
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def load_noaa_temperature(station_id: str, start: date, end: date, token: str | None) -> pd.DataFrame:
-    return fetch_noaa_daily_temperature(station_id=station_id, start=start, end=end, token=token)
+def load_noaa_temperature(
+    station_id: str,
+    start: date,
+    end: date,
+    token: str | None,
+    max_retries: int,
+    backoff_base_seconds: float,
+) -> pd.DataFrame:
+    return fetch_noaa_daily_temperature(
+        station_id=station_id,
+        start=start,
+        end=end,
+        token=token,
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def load_weekly_co2() -> pd.DataFrame:
-    return fetch_noaa_weekly_co2()
+def load_weekly_co2(max_retries: int, backoff_base_seconds: float) -> pd.DataFrame:
+    return fetch_noaa_weekly_co2(
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def load_open_meteo(lat: float, lon: float, start: date, end: date) -> pd.DataFrame:
-    return fetch_open_meteo_historical(lat=lat, lon=lon, start=start, end=end)
+def load_open_meteo(
+    lat: float,
+    lon: float,
+    start: date,
+    end: date,
+    max_retries: int,
+    backoff_base_seconds: float,
+) -> pd.DataFrame:
+    return fetch_open_meteo_historical(
+        lat=lat,
+        lon=lon,
+        start=start,
+        end=end,
+        max_retries=max_retries,
+        backoff_base_seconds=backoff_base_seconds,
+    )
 
 
 def _safe_mean(series: pd.Series) -> float | None:
@@ -73,6 +120,14 @@ def _safe_mean(series: pd.Series) -> float | None:
 
 def _csv_bytes(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8")
+
+
+def _forecast_zip_bytes(export_map: dict[str, pd.DataFrame]) -> bytes:
+    buffer = BytesIO()
+    with ZipFile(buffer, mode="w") as archive:
+        for name, export_df in export_map.items():
+            archive.writestr(name, export_df.to_csv(index=False).encode("utf-8"))
+    return buffer.getvalue()
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -242,6 +297,19 @@ with st.sidebar:
         default=["ARIMA", "Prophet"],
     )
 
+    st.subheader("API Retry")
+    max_retries = int(st.number_input("Max retries", min_value=0, max_value=6, value=3, step=1))
+    backoff_base_seconds = float(
+        st.number_input(
+            "Base backoff (seconds)",
+            min_value=0.1,
+            max_value=5.0,
+            value=1.0,
+            step=0.1,
+            format="%.1f",
+        )
+    )
+
     refresh = st.button("Refresh Data")
     if refresh:
         st.cache_data.clear()
@@ -261,26 +329,48 @@ noaa_token = get_noaa_token()
 # Load historical data
 with st.spinner("Loading historical climate data..."):
     try:
-        nasa_df = load_nasa_temperature(lat=float(lat), lon=float(lon), start=start, end=end)
+        nasa_df = load_nasa_temperature(
+            lat=float(lat),
+            lon=float(lon),
+            start=start,
+            end=end,
+            max_retries=max_retries,
+            backoff_base_seconds=backoff_base_seconds,
+        )
     except Exception as exc:
         st.warning(f"NASA data request failed: {exc}")
         nasa_df = pd.DataFrame(columns=["date", "temp_c"])
 
     try:
-        noaa_df = load_noaa_temperature(station_id=station, start=start, end=end, token=noaa_token)
+        noaa_df = load_noaa_temperature(
+            station_id=station,
+            start=start,
+            end=end,
+            token=noaa_token,
+            max_retries=max_retries,
+            backoff_base_seconds=backoff_base_seconds,
+        )
     except Exception as exc:
         st.warning(f"NOAA station data unavailable for {station}: {exc}")
         noaa_df = pd.DataFrame(columns=["date", "tavg_c", "tmax_c", "tmin_c"])
 
     try:
-        co2_df = load_weekly_co2()
+        co2_df = load_weekly_co2(
+            max_retries=max_retries,
+            backoff_base_seconds=backoff_base_seconds,
+        )
     except Exception as exc:
         st.warning(f"NOAA CO2 request failed: {exc}")
         co2_df = pd.DataFrame(columns=["date", "co2_ppm", "trend_ppm"])
     
     try:
         rainfall_df = load_open_meteo(
-            lat=float(lat), lon=float(lon), start=start, end=end
+            lat=float(lat),
+            lon=float(lon),
+            start=start,
+            end=end,
+            max_retries=max_retries,
+            backoff_base_seconds=backoff_base_seconds,
         )
         if rainfall_df.empty:
             rainfall_df = generate_synthetic_rainfall_data(start, end, location_name=preset)
@@ -289,6 +379,8 @@ with st.spinner("Loading historical climate data..."):
         rainfall_df = generate_synthetic_rainfall_data(start, end, location_name=preset)
     
     aqi_df = generate_synthetic_aqi_data(start, end, location_name=preset)
+
+forecast_exports: dict[str, pd.DataFrame] = {}
 
 # Create tabs for different views
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -495,6 +587,7 @@ with tab2:
                         )
                         if idx % 2 == 0:
                             with left_col:
+                                forecast_exports[f"temperature_forecast_{model_name.lower()}.csv"] = forecast_df.copy()
                                 st.download_button(
                                     label=f"Download {model_name} Forecast CSV",
                                     data=_csv_bytes(forecast_df),
@@ -505,6 +598,7 @@ with tab2:
                                 st.plotly_chart(fig, use_container_width=True)
                         else:
                             with right_col:
+                                forecast_exports[f"temperature_forecast_{model_name.lower()}.csv"] = forecast_df.copy()
                                 st.download_button(
                                     label=f"Download {model_name} Forecast CSV",
                                     data=_csv_bytes(forecast_df),
@@ -576,6 +670,7 @@ with tab3:
                 )
             
             if not forecast_df.empty:
+                forecast_exports["rainfall_forecast_sarima.csv"] = forecast_df.copy()
                 st.download_button(
                     label="Download Rainfall Forecast CSV",
                     data=_csv_bytes(forecast_df),
@@ -656,6 +751,7 @@ with tab4:
                 )
             
             if not forecast_df.empty:
+                forecast_exports["aqi_forecast_prophet.csv"] = forecast_df.copy()
                 st.download_button(
                     label="Download AQI Forecast CSV",
                     data=_csv_bytes(forecast_df),
@@ -739,6 +835,7 @@ with tab5:
                     )
                 
                 if not forecast_df_arima.empty:
+                    forecast_exports["co2_forecast_arima.csv"] = forecast_df_arima.copy()
                     st.download_button(
                         label="Download CO2 ARIMA Forecast CSV",
                         data=_csv_bytes(forecast_df_arima),
@@ -791,6 +888,7 @@ with tab5:
                     )
                 
                 if not forecast_df_prophet.empty:
+                    forecast_exports["co2_forecast_prophet.csv"] = forecast_df_prophet.copy()
                     st.download_button(
                         label="Download CO2 Prophet Forecast CSV",
                         data=_csv_bytes(forecast_df_prophet),
@@ -805,6 +903,17 @@ with tab5:
                         y_label="CO2 (ppm)",
                     )
                     st.plotly_chart(fig, use_container_width=True)
+
+if forecast_exports:
+    st.sidebar.download_button(
+        label="Download All Forecasts (ZIP)",
+        data=_forecast_zip_bytes(forecast_exports),
+        file_name="all_forecasts.zip",
+        mime="application/zip",
+        key="dl-all-forecasts-zip",
+    )
+else:
+    st.sidebar.caption("Run at least one forecast model to enable ZIP export.")
 
 st.divider()
 st.markdown(
