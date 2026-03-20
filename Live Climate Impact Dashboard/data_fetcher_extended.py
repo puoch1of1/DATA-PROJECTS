@@ -51,6 +51,8 @@ def fetch_open_meteo_historical(
     lon: float,
     start: date,
     end: date,
+    max_retries: int = 3,
+    backoff_base_seconds: float = 1.0,
 ) -> pd.DataFrame:
     """Fetch historical weather data from Open-Meteo API.
     
@@ -80,7 +82,13 @@ def fetch_open_meteo_historical(
             "timezone": "UTC",
         }
         
-        response = _get_with_retry(OPEN_METEO_HISTORICAL_URL, params=params, timeout=30)
+        response = _get_with_retry(
+            OPEN_METEO_HISTORICAL_URL,
+            params=params,
+            timeout=30,
+            max_retries=max_retries,
+            backoff_base_seconds=backoff_base_seconds,
+        )
         data = response.json()
         
         if "daily" not in data:
@@ -108,6 +116,8 @@ def fetch_noaa_cdc_precipitation(
     start: date,
     end: date,
     token: Optional[str] = None,
+    max_retries: int = 3,
+    backoff_base_seconds: float = 1.0,
 ) -> pd.DataFrame:
     """Fetch historical daily precipitation from NOAA NCEI.
     
@@ -136,7 +146,14 @@ def fetch_noaa_cdc_precipitation(
             headers["token"] = token
         
         url = "https://www.ncei.noaa.gov/access/services/data/v1"
-        response = _get_with_retry(url, params=params, headers=headers, timeout=30)
+        response = _get_with_retry(
+            url,
+            params=params,
+            headers=headers,
+            timeout=30,
+            max_retries=max_retries,
+            backoff_base_seconds=backoff_base_seconds,
+        )
         records = response.json()
         
         if not records:
