@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 import logging
+import random
+import time
 from typing import Optional
 
 import pandas as pd
@@ -12,6 +14,36 @@ import requests
 # Open-Meteo API for historical weather data (free, no auth required)
 OPEN_METEO_HISTORICAL_URL = "https://archive-api.open-meteo.com/v1/archive"
 logger = logging.getLogger(__name__)
+RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _get_with_retry(
+    url: str,
+    *,
+    params: dict | None = None,
+    headers: dict | None = None,
+    timeout: int = 30,
+    max_retries: int = 3,
+    backoff_base_seconds: float = 1.0,
+) -> requests.Response:
+    last_error: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=timeout)
+            if response.status_code in RETRY_STATUS_CODES:
+                raise requests.HTTPError(f"Retryable HTTP status: {response.status_code}")
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt == max_retries:
+                break
+            sleep_seconds = (backoff_base_seconds * (2 ** attempt)) + random.uniform(0, 0.2)
+            time.sleep(sleep_seconds)
+
+    if last_error is None:
+        raise RuntimeError("Request failed without an explicit exception.")
+    raise last_error
 
 
 def fetch_open_meteo_historical(
@@ -48,8 +80,7 @@ def fetch_open_meteo_historical(
             "timezone": "UTC",
         }
         
-        response = requests.get(OPEN_METEO_HISTORICAL_URL, params=params, timeout=30)
-        response.raise_for_status()
+        response = _get_with_retry(OPEN_METEO_HISTORICAL_URL, params=params, timeout=30)
         data = response.json()
         
         if "daily" not in data:
@@ -105,8 +136,7 @@ def fetch_noaa_cdc_precipitation(
             headers["token"] = token
         
         url = "https://www.ncei.noaa.gov/access/services/data/v1"
-        response = requests.get(url, params=params, headers=headers, timeout=30)
-        response.raise_for_status()
+        response = _get_with_retry(url, params=params, headers=headers, timeout=30)
         records = response.json()
         
         if not records:
