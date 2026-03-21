@@ -328,6 +328,9 @@ noaa_token = get_noaa_token()
 
 # Load historical data
 with st.spinner("Loading historical climate data..."):
+    rainfall_is_synthetic = False
+    aqi_is_synthetic = True
+
     try:
         nasa_df = load_nasa_temperature(
             lat=float(lat),
@@ -373,9 +376,11 @@ with st.spinner("Loading historical climate data..."):
             backoff_base_seconds=backoff_base_seconds,
         )
         if rainfall_df.empty:
+            rainfall_is_synthetic = True
             rainfall_df = generate_synthetic_rainfall_data(start, end, location_name=preset)
     except Exception as exc:
         st.info(f"Using synthetic rainfall data: {exc}")
+        rainfall_is_synthetic = True
         rainfall_df = generate_synthetic_rainfall_data(start, end, location_name=preset)
     
     aqi_df = generate_synthetic_aqi_data(start, end, location_name=preset)
@@ -393,6 +398,41 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 with tab1:
     st.subheader("Historical Climate Data")
+
+    source_rows = [
+        {
+            "Dataset": "NASA Temperature",
+            "Source": "NASA POWER API",
+            "Type": "Live",
+            "Records": len(nasa_df),
+        },
+        {
+            "Dataset": "NOAA Station Temperature",
+            "Source": f"NOAA NCEI ({station})",
+            "Type": "Live",
+            "Records": len(noaa_df),
+        },
+        {
+            "Dataset": "Rainfall",
+            "Source": "Open-Meteo" if not rainfall_is_synthetic else "Synthetic fallback",
+            "Type": "Live" if not rainfall_is_synthetic else "Synthetic",
+            "Records": len(rainfall_df),
+        },
+        {
+            "Dataset": "AQI",
+            "Source": "Synthetic generator",
+            "Type": "Synthetic",
+            "Records": len(aqi_df),
+        },
+        {
+            "Dataset": "CO2",
+            "Source": "NOAA GML",
+            "Type": "Live",
+            "Records": len(co2_df),
+        },
+    ]
+    st.caption("Data quality summary for the selected date range")
+    st.dataframe(pd.DataFrame(source_rows), use_container_width=True, hide_index=True)
     
     col1, col2, col3 = st.columns(3)
     
@@ -494,18 +534,27 @@ with tab2:
                 
                 forecast_results = {}
                 metrics_data = []
+                model_status_rows = []
                 
                 if "ARIMA" in forecast_models:
                     with st.spinner("Running ARIMA..."):
                         result = forecast_arima(timeseries, periods=forecast_days, order=(1, 1, 1))
                         forecast_results["ARIMA"] = create_forecast_dataframe(result, future_dates, "ARIMA")
                         if result["success"]:
+                            model_status_rows.append({"Model": "ARIMA", "Status": "Success", "Details": "Completed"})
                             metrics_data.append({
                                 "Model": "ARIMA",
                                 "MAE": f"{result['mae']:.3f}" if result["mae"] is not None else "N/A",
                                 "RMSE": f"{result['rmse']:.3f}" if result["rmse"] is not None else "N/A",
                             })
                         else:
+                            model_status_rows.append(
+                                {
+                                    "Model": "ARIMA",
+                                    "Status": "Failed",
+                                    "Details": result.get("error", "Unknown error"),
+                                }
+                            )
                             st.warning(f"ARIMA failed: {result.get('error', 'Unknown error')}")
                 
                 if "SARIMA" in forecast_models:
@@ -518,12 +567,20 @@ with tab2:
                         )
                         forecast_results["SARIMA"] = create_forecast_dataframe(result, future_dates, "SARIMA")
                         if result["success"]:
+                            model_status_rows.append({"Model": "SARIMA", "Status": "Success", "Details": "Completed"})
                             metrics_data.append({
                                 "Model": "SARIMA",
                                 "MAE": f"{result['mae']:.3f}" if result["mae"] is not None else "N/A",
                                 "RMSE": f"{result['rmse']:.3f}" if result["rmse"] is not None else "N/A",
                             })
                         else:
+                            model_status_rows.append(
+                                {
+                                    "Model": "SARIMA",
+                                    "Status": "Failed",
+                                    "Details": result.get("error", "Unknown error"),
+                                }
+                            )
                             st.warning(f"SARIMA failed: {result.get('error', 'Unknown error')}")
                 
                 if "Prophet" in forecast_models:
@@ -532,13 +589,25 @@ with tab2:
                         result = forecast_prophet(prophet_input, periods=forecast_days, freq="D")
                         forecast_results["Prophet"] = create_forecast_dataframe(result, future_dates, "Prophet")
                         if result["success"]:
+                            model_status_rows.append({"Model": "Prophet", "Status": "Success", "Details": "Completed"})
                             metrics_data.append({
                                 "Model": "Prophet",
                                 "MAE": "Auto-tuned",
                                 "RMSE": "Auto-tuned",
                             })
                         else:
+                            model_status_rows.append(
+                                {
+                                    "Model": "Prophet",
+                                    "Status": "Failed",
+                                    "Details": result.get("error", "Unknown error"),
+                                }
+                            )
                             st.warning(f"Prophet failed: {result.get('error', 'Unknown error')}")
+
+                if model_status_rows:
+                    st.write("**Model Run Status**")
+                    st.dataframe(pd.DataFrame(model_status_rows), use_container_width=True, hide_index=True)
                 
                 # Model comparison metrics
                 if metrics_data:
@@ -683,6 +752,7 @@ with tab3:
                     forecast_df,
                     title="Rainfall Forecast (SARIMA with 7-day seasonality)",
                     y_label="Precipitation (mm)",
+                    y_col="precip_mm",
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -848,6 +918,7 @@ with tab5:
                         forecast_df_arima,
                         title="CO2 Forecast - ARIMA",
                         y_label="CO2 (ppm)",
+                        y_col="co2_ppm",
                     )
                     st.plotly_chart(fig, use_container_width=True)
             
@@ -901,6 +972,7 @@ with tab5:
                         forecast_df_prophet,
                         title="CO2 Forecast - Prophet",
                         y_label="CO2 (ppm)",
+                        y_col="co2_ppm",
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
