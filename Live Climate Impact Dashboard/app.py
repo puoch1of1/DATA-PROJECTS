@@ -329,7 +329,6 @@ noaa_token = get_noaa_token()
 # Load historical data
 with st.spinner("Loading historical climate data..."):
     rainfall_is_synthetic = False
-    aqi_is_synthetic = True
 
     try:
         nasa_df = load_nasa_temperature(
