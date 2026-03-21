@@ -37,12 +37,13 @@ A Streamlit dashboard that combines **live climate data** from NASA and NOAA wit
 3. **💧 Rainfall Trends** — SARIMA seasonal precipitation forecast
 4. **💨 Air Quality Index** — Prophet-based AQI anomaly prediction
 5. **📈 CO2 Trends** — Long-term atmospheric CO2 forecasts with ARIMA & Prophet comparison
-6. **🌐 Multi-Location Compare** — Side-by-side city forecast charts with RMSE comparison table
+6. **🌐 Multi-Location Compare** — Side-by-side city forecast charts with per-city auto-selected best model (lowest rolling RMSE)
 
 ### Forecast Accuracy Leaderboard
 - Temperature Forecast tab now computes rolling out-of-sample MAE/RMSE per selected model.
 - Models are ranked by **Rolling RMSE** in a leaderboard.
 - The dashboard automatically identifies the best model and highlights it as the recommended forecast.
+- Multi-location tab applies the same approach per city, selecting the best model independently for each location.
 
 ### One-Click Export Bundle
 - Sidebar now includes **Download Full Analysis Bundle (ZIP)** containing:
