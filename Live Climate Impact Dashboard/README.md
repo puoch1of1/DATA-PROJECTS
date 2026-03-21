@@ -9,6 +9,16 @@ A Streamlit dashboard that combines **live climate data** from NASA and NOAA wit
 
 ## 🎯 Features
 
+## ✅ Recent Improvements (March 2026)
+
+- Fixed forecast plotting in rainfall and CO2 tabs by using the correct historical value columns.
+- Added a **Data Quality Summary** table in the Historical Overview tab showing:
+	- dataset source,
+	- live vs synthetic type,
+	- record counts for the selected period.
+- Added a **Model Run Status** table in the Temperature Forecast tab to clearly indicate model success/failure and error details.
+- Kept forecast CSV/ZIP exports aligned with successful forecast outputs for easier downstream analysis.
+
 ### Data Integration
 - **NASA POWER Daily API**: 2m air temperature (T2M) globally
 - **NOAA NCEI Daily Summaries**: Station-specific temperature, min/max
