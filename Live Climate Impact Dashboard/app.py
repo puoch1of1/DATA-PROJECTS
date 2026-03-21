@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from io import BytesIO
+import json
+import re
 import warnings
 from zipfile import ZipFile
 
@@ -128,6 +130,25 @@ def _forecast_zip_bytes(export_map: dict[str, pd.DataFrame]) -> bytes:
         for name, export_df in export_map.items():
             archive.writestr(name, export_df.to_csv(index=False).encode("utf-8"))
     return buffer.getvalue()
+
+
+def _analysis_bundle_zip_bytes(
+    historical_map: dict[str, pd.DataFrame],
+    forecast_map: dict[str, pd.DataFrame],
+    metadata: dict,
+) -> bytes:
+    buffer = BytesIO()
+    with ZipFile(buffer, mode="w") as archive:
+        for name, export_df in historical_map.items():
+            archive.writestr(f"historical/{name}", export_df.to_csv(index=False).encode("utf-8"))
+        for name, export_df in forecast_map.items():
+            archive.writestr(f"forecasts/{name}", export_df.to_csv(index=False).encode("utf-8"))
+        archive.writestr("metadata/analysis_metadata.json", json.dumps(metadata, indent=2, default=str))
+    return buffer.getvalue()
+
+
+def _slugify(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -385,14 +406,26 @@ with st.spinner("Loading historical climate data..."):
     aqi_df = generate_synthetic_aqi_data(start, end, location_name=preset)
 
 forecast_exports: dict[str, pd.DataFrame] = {}
+historical_exports: dict[str, pd.DataFrame] = {
+    "temperature_nasa.csv": nasa_df.copy(),
+    "temperature_noaa.csv": noaa_df.copy(),
+    "rainfall.csv": rainfall_df.copy(),
+    "aqi.csv": aqi_df.copy(),
+    "co2.csv": co2_df.copy(),
+}
+best_temp_model: str | None = None
+temp_leaderboard_rows: list[dict] = []
+multiloc_selected_locations: list[str] = []
+multiloc_model_name = "ARIMA"
 
 # Create tabs for different views
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Historical Overview",
     "🌡️ Temperature Forecast",
     "💧 Rainfall Trends",
     "💨 Air Quality Index",
     "📈 CO2 Trends",
+    "🌐 Multi-Location Compare",
 ])
 
 with tab1:
@@ -639,8 +672,39 @@ with tab2:
                         )
 
                 if backtest_rows:
+                    for row in backtest_rows:
+                        temp_leaderboard_rows.append(
+                            {
+                                "Model": row["Model"],
+                                "Rolling MAE": float(row["Rolling MAE"]),
+                                "Rolling RMSE": float(row["Rolling RMSE"]),
+                                "Windows": int(row["Windows"]),
+                                "Points": int(row["Points"]),
+                            }
+                        )
+
+                    temp_leaderboard_df = pd.DataFrame(temp_leaderboard_rows).sort_values(
+                        "Rolling RMSE", ascending=True
+                    )
+                    best_temp_model = str(temp_leaderboard_df.iloc[0]["Model"])
+
+                    st.write("**Forecast Accuracy Leaderboard (Rolling RMSE)**")
+                    st.dataframe(temp_leaderboard_df, use_container_width=True, hide_index=True)
+                    st.success(f"Auto-selected best model: {best_temp_model}")
+
                     st.write("**Rolling Backtest (Out-of-Sample)**")
                     st.dataframe(pd.DataFrame(backtest_rows), use_container_width=True, hide_index=True)
+
+                    best_forecast_df = forecast_results.get(best_temp_model, pd.DataFrame())
+                    if best_forecast_df is not None and not best_forecast_df.empty:
+                        st.write("**Best-Model Forecast Preview**")
+                        fig_best = plot_forecast_with_actuals(
+                            ts_df,
+                            best_forecast_df,
+                            title=f"Best Temperature Forecast: {best_temp_model}",
+                            y_label="Temperature (°C)",
+                        )
+                        st.plotly_chart(fig_best, use_container_width=True)
                 
                 # Plot forecasts
                 left_col, right_col = st.columns(2)
@@ -974,6 +1038,174 @@ with tab5:
                         y_col="co2_ppm",
                     )
                     st.plotly_chart(fig, use_container_width=True)
+
+with tab6:
+    st.subheader("Multi-Location Side-by-Side Forecast Comparison")
+    st.caption("Compare temperature forecasts across multiple cities using one model and horizon.")
+
+    preset_options = list(CITY_PRESETS.keys())
+    default_multiloc = ["Juba, South Sudan", "Nairobi, Kenya", "London, UK"]
+    multiloc_selected_locations = st.multiselect(
+        "Locations to compare",
+        options=preset_options,
+        default=[city for city in default_multiloc if city in preset_options],
+    )
+    multiloc_model_name = st.selectbox("Comparison model", options=["ARIMA", "SARIMA", "Prophet"], index=0)
+
+    if not multiloc_selected_locations:
+        st.info("Select at least one location to run multi-location comparison.")
+    else:
+        compare_rows: list[dict] = []
+        loc_cols = st.columns(2)
+
+        for idx, loc_name in enumerate(multiloc_selected_locations[:4]):
+            loc = CITY_PRESETS[loc_name]
+            try:
+                loc_nasa_df = load_nasa_temperature(
+                    lat=float(loc["lat"]),
+                    lon=float(loc["lon"]),
+                    start=start,
+                    end=end,
+                    max_retries=max_retries,
+                    backoff_base_seconds=backoff_base_seconds,
+                )
+            except Exception as exc:
+                loc_nasa_df = pd.DataFrame(columns=["date", "temp_c"])
+                st.warning(f"{loc_name}: unable to load NASA data ({exc})")
+
+            if loc_nasa_df.empty:
+                compare_rows.append(
+                    {
+                        "Location": loc_name,
+                        "Model": multiloc_model_name,
+                        "Data Points": 0,
+                        "Latest Temp (C)": np.nan,
+                        "Forecast Mean (C)": np.nan,
+                        "Rolling RMSE": np.nan,
+                    }
+                )
+                continue
+
+            loc_ts = prepare_timeseries(loc_nasa_df, "temp_c", "date")
+            if len(loc_ts) < 7:
+                compare_rows.append(
+                    {
+                        "Location": loc_name,
+                        "Model": multiloc_model_name,
+                        "Data Points": len(loc_ts),
+                        "Latest Temp (C)": np.nan,
+                        "Forecast Mean (C)": np.nan,
+                        "Rolling RMSE": np.nan,
+                    }
+                )
+                continue
+
+            loc_future_dates = generate_future_dates(loc_ts["date"].iloc[-1], forecast_days, freq="D")
+            loc_series = loc_ts["temp_c"]
+
+            if multiloc_model_name == "ARIMA":
+                loc_result = forecast_arima(loc_series, periods=forecast_days, order=(1, 1, 1))
+            elif multiloc_model_name == "SARIMA":
+                loc_result = forecast_sarima(
+                    loc_series,
+                    periods=forecast_days,
+                    order=(1, 1, 1),
+                    seasonal_order=(1, 1, 1, 7),
+                )
+            else:
+                loc_prophet_input = loc_ts[["date", "temp_c"]].copy()
+                loc_result = forecast_prophet(loc_prophet_input, periods=forecast_days, freq="D")
+
+            loc_forecast_df = create_forecast_dataframe(loc_result, loc_future_dates, multiloc_model_name)
+            if not loc_forecast_df.empty:
+                forecast_exports[
+                    f"multiloc_{_slugify(loc_name)}_{multiloc_model_name.lower()}_forecast.csv"
+                ] = loc_forecast_df.copy()
+
+            loc_bt = rolling_backtest_metrics(
+                loc_ts,
+                value_col="temp_c",
+                model_name=multiloc_model_name,
+                freq="D",
+                horizon=min(7, max(2, forecast_days // 4)),
+                min_train_size=30,
+                max_windows=5,
+                seasonal_period=7,
+            )
+            loc_rmse = float(loc_bt["rmse"]) if loc_bt.get("success", False) else np.nan
+
+            compare_rows.append(
+                {
+                    "Location": loc_name,
+                    "Model": multiloc_model_name,
+                    "Data Points": len(loc_ts),
+                    "Latest Temp (C)": round(float(loc_ts["temp_c"].iloc[-1]), 2),
+                    "Forecast Mean (C)": round(float(loc_forecast_df["forecast"].mean()), 2)
+                    if not loc_forecast_df.empty
+                    else np.nan,
+                    "Rolling RMSE": round(loc_rmse, 3) if not np.isnan(loc_rmse) else np.nan,
+                }
+            )
+
+            if not loc_forecast_df.empty:
+                fig_loc = plot_forecast_with_actuals(
+                    loc_ts,
+                    loc_forecast_df,
+                    title=f"{loc_name} - {multiloc_model_name}",
+                    y_label="Temperature (°C)",
+                )
+                with loc_cols[idx % 2]:
+                    st.plotly_chart(fig_loc, use_container_width=True)
+
+        if compare_rows:
+            st.write("**Comparison Summary**")
+            compare_df = pd.DataFrame(compare_rows).sort_values("Rolling RMSE", ascending=True, na_position="last")
+            st.dataframe(compare_df, use_container_width=True, hide_index=True)
+
+metadata_payload = {
+    "generated_at": pd.Timestamp.utcnow().isoformat(),
+    "location": {
+        "preset": preset,
+        "lat": float(lat),
+        "lon": float(lon),
+        "station": station,
+    },
+    "date_range": {
+        "start": str(start),
+        "end": str(end),
+    },
+    "forecast": {
+        "horizon_days": int(forecast_days),
+        "selected_models": forecast_models,
+        "best_temperature_model_by_rmse": best_temp_model,
+    },
+    "multi_location_comparison": {
+        "locations": multiloc_selected_locations,
+        "model": multiloc_model_name,
+    },
+    "data_sources": {
+        "nasa_temperature": {"type": "live", "records": len(nasa_df)},
+        "noaa_station_temperature": {"type": "live", "records": len(noaa_df)},
+        "rainfall": {
+            "type": "synthetic" if rainfall_is_synthetic else "live",
+            "records": len(rainfall_df),
+        },
+        "aqi": {"type": "synthetic", "records": len(aqi_df)},
+        "co2": {"type": "live", "records": len(co2_df)},
+    },
+    "exports": {
+        "historical_files": sorted(historical_exports.keys()),
+        "forecast_files": sorted(forecast_exports.keys()),
+    },
+}
+
+st.sidebar.download_button(
+    label="Download Full Analysis Bundle (ZIP)",
+    data=_analysis_bundle_zip_bytes(historical_exports, forecast_exports, metadata_payload),
+    file_name="climate_dashboard_analysis_bundle.zip",
+    mime="application/zip",
+    key="dl-analysis-bundle-zip",
+)
 
 if forecast_exports:
     st.sidebar.download_button(
