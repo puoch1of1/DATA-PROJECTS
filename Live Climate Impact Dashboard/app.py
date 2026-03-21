@@ -416,7 +416,8 @@ historical_exports: dict[str, pd.DataFrame] = {
 best_temp_model: str | None = None
 temp_leaderboard_rows: list[dict] = []
 multiloc_selected_locations: list[str] = []
-multiloc_model_name = "ARIMA"
+multiloc_best_models: dict[str, str] = {}
+multiloc_compare_summary: list[dict] = []
 
 # Create tabs for different views
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -1041,7 +1042,7 @@ with tab5:
 
 with tab6:
     st.subheader("Multi-Location Side-by-Side Forecast Comparison")
-    st.caption("Compare temperature forecasts across multiple cities using one model and horizon.")
+    st.caption("Each city is auto-fitted with ARIMA, SARIMA, and Prophet; best model is selected by rolling RMSE.")
 
     preset_options = list(CITY_PRESETS.keys())
     default_multiloc = ["Juba, South Sudan", "Nairobi, Kenya", "London, UK"]
@@ -1050,7 +1051,6 @@ with tab6:
         options=preset_options,
         default=[city for city in default_multiloc if city in preset_options],
     )
-    multiloc_model_name = st.selectbox("Comparison model", options=["ARIMA", "SARIMA", "Prophet"], index=0)
 
     if not multiloc_selected_locations:
         st.info("Select at least one location to run multi-location comparison.")
@@ -1077,11 +1077,11 @@ with tab6:
                 compare_rows.append(
                     {
                         "Location": loc_name,
-                        "Model": multiloc_model_name,
+                        "Best Model": "N/A",
                         "Data Points": 0,
                         "Latest Temp (C)": np.nan,
                         "Forecast Mean (C)": np.nan,
-                        "Rolling RMSE": np.nan,
+                        "Best Rolling RMSE": np.nan,
                     }
                 )
                 continue
@@ -1091,67 +1091,99 @@ with tab6:
                 compare_rows.append(
                     {
                         "Location": loc_name,
-                        "Model": multiloc_model_name,
+                        "Best Model": "N/A",
                         "Data Points": len(loc_ts),
                         "Latest Temp (C)": np.nan,
                         "Forecast Mean (C)": np.nan,
-                        "Rolling RMSE": np.nan,
+                        "Best Rolling RMSE": np.nan,
                     }
                 )
                 continue
 
             loc_future_dates = generate_future_dates(loc_ts["date"].iloc[-1], forecast_days, freq="D")
             loc_series = loc_ts["temp_c"]
+            loc_model_rows: list[dict] = []
+            loc_model_forecasts: dict[str, pd.DataFrame] = {}
 
-            if multiloc_model_name == "ARIMA":
-                loc_result = forecast_arima(loc_series, periods=forecast_days, order=(1, 1, 1))
-            elif multiloc_model_name == "SARIMA":
-                loc_result = forecast_sarima(
-                    loc_series,
-                    periods=forecast_days,
-                    order=(1, 1, 1),
-                    seasonal_order=(1, 1, 1, 7),
+            for model_name in ["ARIMA", "SARIMA", "Prophet"]:
+                if model_name == "ARIMA":
+                    loc_result = forecast_arima(loc_series, periods=forecast_days, order=(1, 1, 1))
+                elif model_name == "SARIMA":
+                    loc_result = forecast_sarima(
+                        loc_series,
+                        periods=forecast_days,
+                        order=(1, 1, 1),
+                        seasonal_order=(1, 1, 1, 7),
+                    )
+                else:
+                    loc_prophet_input = loc_ts[["date", "temp_c"]].copy()
+                    loc_result = forecast_prophet(loc_prophet_input, periods=forecast_days, freq="D")
+
+                loc_forecast_df = create_forecast_dataframe(loc_result, loc_future_dates, model_name)
+                if not loc_forecast_df.empty:
+                    loc_model_forecasts[model_name] = loc_forecast_df
+
+                loc_bt = rolling_backtest_metrics(
+                    loc_ts,
+                    value_col="temp_c",
+                    model_name=model_name,
+                    freq="D",
+                    horizon=min(7, max(2, forecast_days // 4)),
+                    min_train_size=30,
+                    max_windows=5,
+                    seasonal_period=7,
                 )
+                loc_rmse = float(loc_bt["rmse"]) if loc_bt.get("success", False) else np.nan
+                loc_model_rows.append(
+                    {
+                        "Model": model_name,
+                        "Rolling RMSE": loc_rmse,
+                        "Rolling MAE": float(loc_bt["mae"]) if loc_bt.get("success", False) else np.nan,
+                    }
+                )
+
+            loc_model_df = pd.DataFrame(loc_model_rows).sort_values("Rolling RMSE", ascending=True, na_position="last")
+            loc_valid_rmse = loc_model_df[loc_model_df["Rolling RMSE"].notna()]
+            if not loc_valid_rmse.empty:
+                best_loc_model = str(loc_valid_rmse.iloc[0]["Model"])
+                best_loc_rmse = float(loc_valid_rmse.iloc[0]["Rolling RMSE"])
+            elif loc_model_forecasts:
+                best_loc_model = list(loc_model_forecasts.keys())[0]
+                best_loc_rmse = np.nan
             else:
-                loc_prophet_input = loc_ts[["date", "temp_c"]].copy()
-                loc_result = forecast_prophet(loc_prophet_input, periods=forecast_days, freq="D")
+                best_loc_model = "N/A"
+                best_loc_rmse = np.nan
 
-            loc_forecast_df = create_forecast_dataframe(loc_result, loc_future_dates, multiloc_model_name)
-            if not loc_forecast_df.empty:
+            if best_loc_model != "N/A":
+                multiloc_best_models[loc_name] = best_loc_model
+
+            best_loc_forecast_df = loc_model_forecasts.get(best_loc_model, pd.DataFrame())
+            if not best_loc_forecast_df.empty:
                 forecast_exports[
-                    f"multiloc_{_slugify(loc_name)}_{multiloc_model_name.lower()}_forecast.csv"
-                ] = loc_forecast_df.copy()
-
-            loc_bt = rolling_backtest_metrics(
-                loc_ts,
-                value_col="temp_c",
-                model_name=multiloc_model_name,
-                freq="D",
-                horizon=min(7, max(2, forecast_days // 4)),
-                min_train_size=30,
-                max_windows=5,
-                seasonal_period=7,
-            )
-            loc_rmse = float(loc_bt["rmse"]) if loc_bt.get("success", False) else np.nan
+                    f"multiloc_{_slugify(loc_name)}_{best_loc_model.lower()}_best_forecast.csv"
+                ] = best_loc_forecast_df.copy()
 
             compare_rows.append(
                 {
                     "Location": loc_name,
-                    "Model": multiloc_model_name,
+                    "Best Model": best_loc_model,
                     "Data Points": len(loc_ts),
                     "Latest Temp (C)": round(float(loc_ts["temp_c"].iloc[-1]), 2),
-                    "Forecast Mean (C)": round(float(loc_forecast_df["forecast"].mean()), 2)
-                    if not loc_forecast_df.empty
+                    "Forecast Mean (C)": round(float(best_loc_forecast_df["forecast"].mean()), 2)
+                    if not best_loc_forecast_df.empty
                     else np.nan,
-                    "Rolling RMSE": round(loc_rmse, 3) if not np.isnan(loc_rmse) else np.nan,
+                    "Best Rolling RMSE": round(best_loc_rmse, 3) if not np.isnan(best_loc_rmse) else np.nan,
                 }
             )
 
-            if not loc_forecast_df.empty:
+            with st.expander(f"{loc_name} model scores"):
+                st.dataframe(loc_model_df, use_container_width=True, hide_index=True)
+
+            if not best_loc_forecast_df.empty:
                 fig_loc = plot_forecast_with_actuals(
                     loc_ts,
-                    loc_forecast_df,
-                    title=f"{loc_name} - {multiloc_model_name}",
+                    best_loc_forecast_df,
+                    title=f"{loc_name} - Best: {best_loc_model}",
                     y_label="Temperature (°C)",
                 )
                 with loc_cols[idx % 2]:
@@ -1159,8 +1191,9 @@ with tab6:
 
         if compare_rows:
             st.write("**Comparison Summary**")
-            compare_df = pd.DataFrame(compare_rows).sort_values("Rolling RMSE", ascending=True, na_position="last")
+            compare_df = pd.DataFrame(compare_rows).sort_values("Best Rolling RMSE", ascending=True, na_position="last")
             st.dataframe(compare_df, use_container_width=True, hide_index=True)
+            multiloc_compare_summary = compare_rows.copy()
 
 metadata_payload = {
     "generated_at": pd.Timestamp.utcnow().isoformat(),
@@ -1181,7 +1214,9 @@ metadata_payload = {
     },
     "multi_location_comparison": {
         "locations": multiloc_selected_locations,
-        "model": multiloc_model_name,
+        "selection_strategy": "best rolling RMSE per city",
+        "best_models_by_location": multiloc_best_models,
+        "summary": multiloc_compare_summary,
     },
     "data_sources": {
         "nasa_temperature": {"type": "live", "records": len(nasa_df)},
