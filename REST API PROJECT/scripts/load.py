@@ -1,18 +1,80 @@
-import sqlite3
-import pandas as pd
 import os
+import sqlite3
 
-def load_to_sqlite(df, db_path, table_name):
-    conn = sqlite3.connect(db_path)
+import pandas as pd
 
-    df.to_sql(
-        table_name,
-        conn,
-        if_exists="append",
-        index=False
+REQUIRED_COLUMNS = ["country", "year", "indicator", "value", "ingested_at"]
+
+
+def _normalize_dataframe(df: pd.DataFrame):
+    cleaned = df.copy()
+
+    for col in REQUIRED_COLUMNS:
+        if col not in cleaned.columns:
+            cleaned[col] = None
+
+    cleaned = cleaned[REQUIRED_COLUMNS]
+    cleaned["year"] = pd.to_numeric(cleaned["year"], errors="coerce").astype("Int64")
+    cleaned["value"] = pd.to_numeric(cleaned["value"], errors="coerce")
+    cleaned = cleaned.dropna(subset=["country", "year", "indicator", "value"])
+    cleaned["year"] = cleaned["year"].astype("int64")
+
+    return cleaned
+
+
+def _ensure_table_schema(conn: sqlite3.Connection, table_name: str):
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            country TEXT,
+            year INTEGER,
+            indicator TEXT,
+            value REAL,
+            ingested_at TEXT
+        )
+        """
     )
 
-    conn.close()
+    existing_cols = {
+        row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+
+    if "ingested_at" not in existing_cols:
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN ingested_at TEXT")
+
+
+def _delete_existing_keys(conn: sqlite3.Connection, table_name: str, df: pd.DataFrame):
+    keys = list({(row.country, int(row.year), row.indicator) for row in df.itertuples(index=False)})
+    if not keys:
+        return
+
+    conn.executemany(
+        f"DELETE FROM {table_name} WHERE country = ? AND year = ? AND indicator = ?",
+        keys,
+    )
+
+
+def load_to_sqlite(df, db_path, table_name):
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    prepared_df = _normalize_dataframe(df)
+    if prepared_df.empty:
+        raise ValueError("No valid rows available for loading after normalization")
+
+    conn = sqlite3.connect(db_path)
+    try:
+        _ensure_table_schema(conn, table_name)
+        _delete_existing_keys(conn, table_name, prepared_df)
+
+        prepared_df.to_sql(
+            table_name,
+            conn,
+            if_exists="append",
+            index=False
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
 
 def load_data_pipeline(csv_path, db_path, table_name="development_indicators"):
     """Load CSV data into SQLite database"""
@@ -24,8 +86,8 @@ def load_data_pipeline(csv_path, db_path, table_name="development_indicators"):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.dirname(script_dir)
-    
+
     csv_path = os.path.join(project_dir, "data", "cleaned", "south_sudan_clean.csv")
     db_path = os.path.join(project_dir, "database", "worldbank.db")
-    
+
     load_data_pipeline(csv_path, db_path)
