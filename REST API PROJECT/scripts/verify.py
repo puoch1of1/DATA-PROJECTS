@@ -7,7 +7,7 @@ def verify_table(db_path: Path, table_name: str = "development_indicators"):
     conn = sqlite3.connect(db_path)
     try:
         result = pd.read_sql(
-            f"SELECT * FROM {table_name} ORDER BY year DESC LIMIT 10",
+            f"SELECT country, year, indicator, value, ingested_at FROM {table_name} ORDER BY year DESC LIMIT 10",
             conn
         )
         total_rows = pd.read_sql(
