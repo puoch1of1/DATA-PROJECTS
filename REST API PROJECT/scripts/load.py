@@ -39,6 +39,33 @@ def _ensure_table_schema(conn: sqlite3.Connection, table_name: str):
         row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
     }
 
+    # Migrate legacy schema that included an index export column.
+    if "Unnamed: 0" in existing_cols:
+        temp_table = f"{table_name}__normalized"
+        conn.execute(
+            f"""
+            CREATE TABLE {temp_table} (
+                country TEXT,
+                year INTEGER,
+                indicator TEXT,
+                value REAL,
+                ingested_at TEXT
+            )
+            """
+        )
+        conn.execute(
+            f"""
+            INSERT INTO {temp_table} (country, year, indicator, value, ingested_at)
+            SELECT country, year, indicator, value, NULL AS ingested_at
+            FROM {table_name}
+            """
+        )
+        conn.execute(f"DROP TABLE {table_name}")
+        conn.execute(f"ALTER TABLE {temp_table} RENAME TO {table_name}")
+        existing_cols = {
+            row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+
     if "ingested_at" not in existing_cols:
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN ingested_at TEXT")
 
