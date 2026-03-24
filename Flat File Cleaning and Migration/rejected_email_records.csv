@@ -1,0 +1,5 @@
+source_id,full_name,email,signup_source,signup_date,country,rejection_reason
+3,Mike Brown,mikebrown@gmail,Website,2024-01-14,Uganda,invalid_email
+6,John Doe,johndoe@gmail.com,Event,2024-01-16,Uganda,duplicate_email
+8,Peter Black,peterblack@,Manual,2024-01-17,Uganda,invalid_email
+9,Mary Green,marygreen@gmail.com,Website,,Kenya,missing_signup_date
