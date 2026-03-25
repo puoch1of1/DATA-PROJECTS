@@ -1,0 +1,42 @@
+Avg_Upload_Frequency,Avg_Views,Correlation_Freq_Views,P_Value,Significance,Category
+1.3103,117185192.9425,-0.1323,0.3926,No Reliable Evidence,animals
+7.0,72978403.8115,-0.2452,0.1988,No Reliable Evidence,apple
+7.1429,8891756.2571,-0.3445,0.1878,No Reliable Evidence,asmr
+1.3333,63991559.8939,-0.1879,0.2358,No Reliable Evidence,bed
+1.2368,4394152.2412,-0.1167,0.4965,No Reliable Evidence,biology
+2.4,7573307.0897,-0.0116,0.961,No Reliable Evidence,business
+3.1333,3518579.7,-0.2715,0.1389,No Reliable Evidence,chess
+25.0,495180.75,,,Insufficient Data,cnn
+1.4545,1372085.601,-0.1774,0.3177,No Reliable Evidence,computer science
+25.0,4564463.3438,,,Insufficient Data,crypto
+2.0,22986381.39,-0.3258,0.0909,Weak Evidence,cubes
+1.7241,625536.9034,-0.1804,0.3127,No Reliable Evidence,data science
+1.2632,3377155.9474,-0.1757,0.2448,No Reliable Evidence,education
+3.5455,2244726.0376,-0.2419,0.2008,No Reliable Evidence,finance
+2.8235,10183105.2725,-0.3241,0.1279,No Reliable Evidence,food
+2.0833,711933.9986,0.0188,0.9351,No Reliable Evidence,game development
+10.75,2673139.0875,-0.5107,0.5155,No Reliable Evidence,gaming
+1.9565,188878019.7391,-0.0994,0.6124,No Reliable Evidence,google
+2.2727,32360512.3563,-0.1175,0.1778,No Reliable Evidence,history
+1.8462,13347969.0913,-0.2226,0.1758,No Reliable Evidence,how-to
+2.0,4241916.9778,-0.1643,0.2448,No Reliable Evidence,interview
+1.2432,855072.2838,0.0203,0.9151,No Reliable Evidence,literature
+2.9286,9855461.9667,-0.262,0.0839,Weak Evidence,lofi
+1.3514,1087379.6441,0.2244,0.1469,No Reliable Evidence,machine learning
+5.0,9882924.9162,-0.5329,0.0689,Weak Evidence,marvel
+1.1538,3569313.4231,-0.1515,0.6503,No Reliable Evidence,mathchemistry
+12.5,13679244.6141,-0.906,0.0969,Weak Evidence,minecraft
+3.2143,2849418.051,0.2944,0.1079,No Reliable Evidence,movies
+2.1739,102107536.0858,-0.5504,0.017,Strong Evidence,mrbeast
+3.75,32557424.9892,-0.3533,0.2527,No Reliable Evidence,mukbang
+4.1818,114546372.1928,-0.1487,0.2498,No Reliable Evidence,music
+39.0,247492.1795,,,Insufficient Data,news
+4.3636,3835382.3389,-0.227,0.2567,No Reliable Evidence,nintendo
+1.4706,4554351.1569,-0.204,0.2108,No Reliable Evidence,physics
+50.0,623172.46,,,Insufficient Data,reaction
+1.4412,1244786.3392,-0.0957,0.5814,No Reliable Evidence,sat
+2.1304,15517380.3675,-0.1579,0.1479,No Reliable Evidence,sports
+4.3636,2779629.2816,-0.3112,0.2847,No Reliable Evidence,tech
+3.5714,2542104.3586,-0.2812,0.1279,No Reliable Evidence,trolling
+1.7857,9105564.3772,-0.2151,0.1828,No Reliable Evidence,tutorial
+3.0625,4687449.6,-0.2078,0.1409,No Reliable Evidence,xbox
