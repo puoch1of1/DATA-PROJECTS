@@ -61,7 +61,7 @@ def permutation_test_correlation(x, y, n_perm=2000, random_state=42):
     x = x[valid].values
     y = y[valid].values
 
-    if len(x) < 3:
+    if len(x) < 3 or np.isclose(np.std(x), 0) or np.isclose(np.std(y), 0):
         return np.nan, np.nan
 
     observed = np.corrcoef(x, y)[0, 1]
@@ -168,9 +168,19 @@ def analyze_upload_frequency_vs_views(df):
             'Significance': significance
         })
 
-    correlation_analysis = upload_freq.groupby('Category').apply(_corr_row).round(4)
+    correlation_rows = []
+    for category, group in upload_freq.groupby('Category', sort=False):
+        row = _corr_row(group).to_dict()
+        for key in ['Avg_Upload_Frequency', 'Avg_Views', 'Correlation_Freq_Views', 'P_Value']:
+            value = row.get(key)
+            if pd.notna(value):
+                row[key] = round(value, 4)
+        row['Category'] = category
+        correlation_rows.append(row)
+
+    correlation_analysis = pd.DataFrame(correlation_rows)
     
-    return correlation_analysis.reset_index(), upload_freq
+    return correlation_analysis.reset_index(drop=True), upload_freq
 
 
 def analyze_category_engagement(df, comments_df=None):
