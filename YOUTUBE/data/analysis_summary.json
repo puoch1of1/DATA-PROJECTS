@@ -1,0 +1,20 @@
+{
+  "total_videos": 1881,
+  "total_views": 21820670087.0,
+  "total_likes": 319544665.0,
+  "total_comments": 14775202.0,
+  "avg_views": 11600568.892610313,
+  "avg_likes": 169880.20467836258,
+  "avg_comments": 7854.971823498139,
+  "avg_engagement_rate": 3.711343363554842,
+  "categories_count": 41,
+  "date_range": "2007-07-16 00:00:00 to 2022-08-24 00:00:00",
+  "generated_at_utc": "2026-03-25T20:17:28.704442",
+  "top_strategy_categories": [
+    "mrbeast",
+    "google",
+    "animals",
+    "bed",
+    "crypto"
+  ]
+}
