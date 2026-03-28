@@ -1,6 +1,6 @@
 import os
 
-# Default connection strings (override via environment variables for production)
+
 DEFAULT_SQLSERVER_CONN_STR = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
     "SERVER=localhost;"
@@ -13,9 +13,13 @@ DEFAULT_POSTGRES_CONN_STR = (
     "postgresql://postgres:your_password@localhost:5432/target_db"
 )
 
-# Read from environment if available
+DEFAULT_SOURCE_SCHEMA = os.getenv("MIGRATION_SOURCE_SCHEMA", "dbo")
+DEFAULT_TARGET_SCHEMA = os.getenv("MIGRATION_TARGET_SCHEMA", "public")
+DEFAULT_CHUNK_SIZE = int(os.getenv("MIGRATION_CHUNK_SIZE", "1000"))
+
 SQLSERVER_CONN_STR = os.getenv("SQLSERVER_CONN_STR", DEFAULT_SQLSERVER_CONN_STR)
 POSTGRES_CONN_STR = os.getenv("POSTGRES_CONN_STR", DEFAULT_POSTGRES_CONN_STR)
+
 
 def require_config() -> None:
     """Warn if obvious placeholders are present in connection strings."""
