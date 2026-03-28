@@ -11,6 +11,17 @@ from extract import extract_table
 LOAD_MODES = {"append", "truncate", "replace"}
 
 
+def ensure_postgres_schema_exists(schema_name: str) -> None:
+    require_config()
+    with psycopg2.connect(POSTGRES_CONN_STR) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(
+                    sql.Identifier(schema_name)
+                )
+            )
+
+
 def postgres_table_exists(table_name: str, schema: str | None = None) -> bool:
     target_schema = schema or "public"
     require_config()
@@ -63,6 +74,8 @@ def load_to_postgres(
         raise ValueError("chunk_size must be greater than 0")
     if df.empty:
         return 0
+
+    ensure_postgres_schema_exists(target_schema)
 
     if load_mode == "truncate":
         truncate_postgres_table(table_name, target_schema)
