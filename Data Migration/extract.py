@@ -1,30 +1,33 @@
-import pyodbc
 import pandas as pd
+import pyodbc
+
 from config import SQLSERVER_CONN_STR, require_config
+from db_utils import qualify_sqlserver_table, validate_identifier
+
 
 def extract_table(table_name: str, schema: str | None = None) -> pd.DataFrame:
-    """Extract all rows from a SQL Server table.
-
-    Args:
-        table_name: Table name to extract.
-        schema: Optional schema name (e.g., 'dbo').
-    """
+    """Extract all rows from a SQL Server table."""
     require_config()
-    full_name = f"{schema}.{table_name}" if schema else table_name
+    validate_identifier(table_name, "table name")
+    if schema:
+        validate_identifier(schema, "schema name")
+
+    full_name = qualify_sqlserver_table(table_name, schema=schema)
     try:
         conn = pyodbc.connect(SQLSERVER_CONN_STR)
-    except pyodbc.Error as e:
-        raise RuntimeError(f"SQL Server connection failed: {e}") from e
+    except pyodbc.Error as exc:
+        raise RuntimeError(f"SQL Server connection failed: {exc}") from exc
+
     try:
         query = f"SELECT * FROM {full_name}"
-        df = pd.read_sql(query, conn)
+        return pd.read_sql(query, conn)
     finally:
         conn.close()
-    return df
+
 
 if __name__ == "__main__":
     try:
-        df = extract_table("customers", schema="dbo")
-        print(df.head())
-    except Exception as e:
-        print(f"Extraction error: {e}")
+        dataframe = extract_table("customers", schema="dbo")
+        print(dataframe.head())
+    except Exception as exc:
+        print(f"Extraction error: {exc}")
