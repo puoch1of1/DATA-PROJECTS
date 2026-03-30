@@ -9,10 +9,16 @@ a user message is:
 
 The chatbot then adjusts its response tone based on detected emotion.
 
+This version also includes:
+
+- in-session memory so the bot can reference earlier messages
+- a Streamlit web chat interface
+
 ## Tech
 
 - Python 3.9+
 - VADER sentiment analyzer (`vaderSentiment`)
+- Streamlit (`streamlit`)
 
 ## Setup
 
@@ -30,6 +36,15 @@ python chatbot.py
 ```
 
 Type `exit` or `quit` to end the chat.
+
+## Run Web UI
+
+```bash
+streamlit run app_streamlit.py
+```
+
+The web app keeps conversation history in the same browser session using
+`st.session_state`, and the chatbot logic keeps a memory list of prior turns.
 
 ## Example
 
