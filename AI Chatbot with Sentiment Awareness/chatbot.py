@@ -12,6 +12,7 @@ for short conversational text.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import List
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -22,6 +23,15 @@ class SentimentThresholds:
 
     happy: float = 0.25
     unhappy: float = -0.25
+
+
+@dataclass
+class ChatTurn:
+    """Single user-bot exchange kept in session memory."""
+
+    user_text: str
+    emotion: str
+    bot_response: str
 
 
 def detect_emotion(
@@ -60,10 +70,56 @@ def build_response(emotion: str, user_text: str) -> str:
     )
 
 
+def build_response_with_memory(
+    emotion: str,
+    user_text: str,
+    history: List[ChatTurn],
+) -> str:
+    """Adapt the response using both current emotion and recent chat memory."""
+    base_response = build_response(emotion, user_text)
+
+    if not history:
+        return f"{base_response} This is our first message in this session."
+
+    last_turn = history[-1]
+
+    if emotion == "happy" and last_turn.emotion == "unhappy":
+        return (
+            f"{base_response} I also notice you sound better than before, "
+            "which is great progress."
+        )
+
+    if emotion == "unhappy" and last_turn.emotion == "happy":
+        return (
+            f"{base_response} You sounded more positive earlier, so we can use "
+            "what was working then as a starting point."
+        )
+
+    if emotion == last_turn.emotion:
+        return f"{base_response} I can see this feeling is continuing from your last message."
+
+    return f"{base_response} Compared with your last message, your tone has shifted a bit."
+
+
+class SentimentAwareChatbot:
+    """Chatbot that tracks per-session memory in process."""
+
+    def __init__(self) -> None:
+        self.analyzer = SentimentIntensityAnalyzer()
+        self.thresholds = SentimentThresholds()
+        self.history: List[ChatTurn] = []
+
+    def reply(self, user_text: str) -> tuple[str, str]:
+        """Return detected emotion and bot response, then store the turn."""
+        emotion = detect_emotion(user_text, self.analyzer, self.thresholds)
+        response = build_response_with_memory(emotion, user_text, self.history)
+        self.history.append(ChatTurn(user_text=user_text, emotion=emotion, bot_response=response))
+        return emotion, response
+
+
 def run_chatbot() -> None:
     """Run the interactive CLI loop."""
-    analyzer = SentimentIntensityAnalyzer()
-    thresholds = SentimentThresholds()
+    bot = SentimentAwareChatbot()
 
     print("Sentiment-Aware Chatbot")
     print("Type 'exit' or 'quit' to stop.")
@@ -79,8 +135,7 @@ def run_chatbot() -> None:
             print("Bot: Thanks for chatting. Take care.")
             break
 
-        emotion = detect_emotion(user_text, analyzer, thresholds)
-        response = build_response(emotion, user_text)
+        emotion, response = bot.reply(user_text)
 
         print(f"Bot ({emotion}): {response}")
 
