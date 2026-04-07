@@ -277,33 +277,39 @@ def build_response(emotion: str, intent: str, user_text: str) -> str:
 
 def build_response_with_memory(
     emotion: str,
+    intent: str,
     user_text: str,
     history: List[ChatTurn],
 ) -> str:
-    """Adapt the response using both current emotion and recent chat memory."""
-    base_response = build_response(emotion, user_text)
+    """Adapt response using emotion, intent, and recent chat memory."""
+    base_response = build_response(emotion, intent, user_text)
 
     if not history:
-        return f"{base_response} This is our first message in this session."
+        return f"{base_response}"
 
     last_turn = history[-1]
 
-    if emotion == "happy" and last_turn.emotion == "unhappy":
+    # Track emotional trajectory
+    if emotion in ["happy", "very_happy"] and last_turn.emotion in ["unhappy", "very_unhappy"]:
         return (
             f"{base_response} I also notice you sound better than before, "
-            "which is great progress."
+            "which is wonderful progress."
         )
 
-    if emotion == "unhappy" and last_turn.emotion == "happy":
+    if emotion in ["unhappy", "very_unhappy"] and last_turn.emotion in ["happy", "very_happy"]:
         return (
-            f"{base_response} You sounded more positive earlier, so we can use "
-            "what was working then as a starting point."
+            f"{base_response} You sounded more positive earlier, so let's remember "
+            "what was working then."
         )
 
     if emotion == last_turn.emotion:
-        return f"{base_response} I can see this feeling is continuing from your last message."
+        return f"{base_response} I can see this feeling is continuing from before."
 
-    return f"{base_response} Compared with your last message, your tone has shifted a bit."
+    # If intent repeated
+    if intent == last_turn.intent and history:
+        return f"{base_response} It seems this is still on your mind."
+
+    return f"{base_response} I'm noticing a shift in what you're bringing up."
 
 
 class SentimentAwareChatbot:
