@@ -169,24 +169,110 @@ def extract_keywords(text: str) -> List[str]:
     return keywords
 
 
-def build_response(emotion: str, user_text: str) -> str:
-    """Create a response adapted to the detected user emotion."""
-    if emotion == "happy":
-        return (
-            "That sounds positive. I am glad to hear it. "
-            "Want to share what is going especially well?"
-        )
+def build_response(emotion: str, intent: str, user_text: str) -> str:
+    """Create a response adapted to emotion and intent."""
+    # Response templates by emotion and intent
+    responses = {
+        "very_happy": {
+            "emotional_support": [
+                "That's wonderful! Your enthusiasm is truly infectious. Keep riding this positive wave!",
+                "I love your energy! This kind of positivity is powerful. What's driving all this joy?",
+            ],
+            "help_seeking": [
+                "Great mindset! With your positive outlook, you'll definitely find a solution. Let's tackle it!",
+                "Your optimism is your superpower right now. What specifically can we work on together?",
+            ],
+            "information": [
+                "Awesome! I'm excited to share this with you. Here's what you need to know.",
+                "Perfect timing for some good information! What aspect interests you most?",
+            ],
+            "small_talk": [
+                "Your mood is contagious! It sounds like things are going really well for you.",
+                "This is fantastic energy! What's been the highlight of your day?",
+            ],
+        },
+        "happy": {
+            "emotional_support": [
+                "That sounds positive. I'm glad to hear it. Want to share what's going especially well?",
+                "It's great that you're feeling good. What's contributing to this positive mood?",
+            ],
+            "help_seeking": [
+                "With this positive energy, you're in a great place to tackle challenges. How can I help?",
+                "This is a good mindset for problem-solving. What's the issue you'd like to address?",
+            ],
+            "information": [
+                "Glad you're interested! I have some useful information to share on that.",
+                "Perfect, let me share some details that might help you.",
+            ],
+            "small_talk": [
+                "That's great to hear! Sounds like you're in a good place right now.",
+                "Your positive tone is refreshing. Tell me more about what's on your mind.",
+            ],
+        },
+        "neutral": {
+            "emotional_support": [
+                "Thanks for sharing. Tell me a bit more and I can try to help further.",
+                "I appreciate you opening up. What else is on your mind?",
+            ],
+            "help_seeking": [
+                "I'm here to help. Can you walk me through what you need?",
+                "Let's work through this together. What's the main challenge?",
+            ],
+            "information": [
+                "I can provide some insights on that. What would be most helpful?",
+                "That's an interesting topic. What specific aspects interest you?",
+            ],
+            "small_talk": [
+                "Interesting. Tell me more about that.",
+                "I see. What brought that to mind?",
+            ],
+        },
+        "unhappy": {
+            "emotional_support": [
+                "I hear that this is challenging. It's okay to feel this way. Want to talk about it?",
+                "I sense you're going through something difficult. I'm here to listen.",
+            ],
+            "help_seeking": [
+                "I understand this feels tough. Let's break it down into smaller, manageable steps.",
+                "Don't worry, we can work through this together. Where should we start?",
+            ],
+            "information": [
+                "I can help shed some light on this. Understanding more might ease some of the frustration.",
+                "Let me share some perspective that might help clarify things.",
+            ],
+            "small_talk": [
+                "It sounds like you're having a rough time. Want to talk about it?",
+                "I pick up on some frustration. What's bothering you?",
+            ],
+        },
+        "very_unhappy": {
+            "emotional_support": [
+                "I can sense you're really struggling right now. You're not alone, and it's okay to feel this way.",
+                "This sounds incredibly difficult. I'm genuinely here to support you through this.",
+            ],
+            "help_seeking": [
+                "I understand you're in a tough spot. Let's take this one small step at a time, together.",
+                "This feels overwhelming, but breaking it into pieces makes it manageable. Let's start there.",
+            ],
+            "information": [
+                "Getting clarity on this might help ease some of the distress. Let me explain.",
+                "Understanding what's happening is the first step toward improvement.",
+            ],
+            "small_talk": [
+                "Something seems really wrong. I'm here to listen if you want to share.",
+                "You sound like you're carrying a heavy load. Let me know if I can help.",
+            ],
+        },
+    }
 
-    if emotion == "unhappy":
-        return (
-            "I hear that this feels tough. "
-            "If you want, we can break the problem into smaller steps."
-        )
+    # Get the appropriate response template
+    template_list = responses.get(emotion, {}).get(intent, [])
+    if not template_list:
+        # Fallback response
+        return "I'm here to help. Tell me more about what you're experiencing."
 
-    return (
-        "Thanks for sharing. "
-        "Tell me a bit more and I can try to help further."
-    )
+    # Alternate responses for variety (could use counter in real app)
+    return template_list[0] if len(template_list) > 0 else template_list[-1]
 
 
 def build_response_with_memory(
