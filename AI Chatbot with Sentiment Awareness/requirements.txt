@@ -1,2 +1,5 @@
 vaderSentiment==3.3.2
 streamlit==1.44.1
+pandas==2.1.4
+plotly==5.18.0
+
