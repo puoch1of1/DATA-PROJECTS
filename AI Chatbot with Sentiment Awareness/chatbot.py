@@ -313,19 +313,46 @@ def build_response_with_memory(
 
 
 class SentimentAwareChatbot:
-    """Chatbot that tracks per-session memory in process."""
+    """Advanced chatbot with emotion, intent, and topic tracking."""
 
     def __init__(self) -> None:
         self.analyzer = SentimentIntensityAnalyzer()
         self.thresholds = SentimentThresholds()
         self.history: List[ChatTurn] = []
+        self.analytics = ConversationAnalytics()
 
-    def reply(self, user_text: str) -> tuple[str, str]:
-        """Return detected emotion and bot response, then store the turn."""
-        emotion = detect_emotion(user_text, self.analyzer, self.thresholds)
-        response = build_response_with_memory(emotion, user_text, self.history)
-        self.history.append(ChatTurn(user_text=user_text, emotion=emotion, bot_response=response))
-        return emotion, response
+    def reply(self, user_text: str) -> tuple[str, str, str, str]:
+        """Return emotion, sentiment_score, intent, and bot response, then store the turn."""
+        emotion, score = detect_emotion(user_text, self.analyzer, self.thresholds)
+        intent = detect_intent(user_text)
+        keywords = extract_keywords(user_text)
+        response = build_response_with_memory(emotion, intent, user_text, self.history)
+
+        turn = ChatTurn(
+            user_text=user_text,
+            emotion=emotion,
+            emotion_score=score,
+            intent=intent,
+            keywords=keywords,
+            bot_response=response,
+        )
+        self.history.append(turn)
+        self.analytics.update(turn)
+
+        return emotion, intent, response, str(round(score, 2))
+
+    def get_session_summary(self) -> Dict[str, any]:
+        """Return comprehensive session statistics."""
+        return {
+            "total_messages": self.analytics.total_turns,
+            "overall_sentiment": "positive" if self.analytics.average_emotion_score > 0 else "negative" if self.analytics.average_emotion_score < 0 else "neutral",
+            "average_emotion_score": round(self.analytics.average_emotion_score, 2),
+            "emotion_breakdown": self.analytics.emotion_distribution.copy(),
+            "intent_breakdown": self.analytics.intent_distribution.copy(),
+            "top_keywords": self.analytics.top_keywords(5),
+            "dominant_emotion": max(self.analytics.emotion_distribution, key=self.analytics.emotion_distribution.get),
+            "dominant_intent": max(self.analytics.intent_distribution, key=self.analytics.intent_distribution.get),
+        }
 
 
 def run_chatbot() -> None:
