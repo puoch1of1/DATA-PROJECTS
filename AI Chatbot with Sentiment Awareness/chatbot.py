@@ -1,18 +1,26 @@
-"""Simple CLI chatbot with sentiment awareness.
+"""AI Chatbot with Sentiment Awareness and Advanced NLP Features.
 
-The bot classifies each user message into one of three emotions:
-- happy
-- neutral
-- unhappy
+The bot classifies each user message into granular emotion levels:
+- very_unhappy (compound <= -0.75)
+- unhappy (-0.75 < compound <= -0.25)
+- neutral (-0.25 < compound < 0.25)
+- happy (0.25 <= compound < 0.75)
+- very_happy (compound >= 0.75)
 
-Sentiment analysis is powered by VADER, a lightweight NLP model that works well
-for short conversational text.
+Features include:
+- Intent recognition (emotional_support, help_seeking, information, small_talk)
+- Keyword extraction for topic tracking
+- Response variety with context-aware templates
+- Conversation analytics and statistics
+- Session memory with emotional trajectory tracking
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Dict
+from collections import Counter
+import re
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -21,8 +29,10 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 class SentimentThresholds:
     """Thresholds for converting VADER compound score into emotion labels."""
 
+    very_happy: float = 0.75
     happy: float = 0.25
     unhappy: float = -0.25
+    very_unhappy: float = -0.75
 
 
 @dataclass
@@ -31,23 +41,132 @@ class ChatTurn:
 
     user_text: str
     emotion: str
+    emotion_score: float
+    intent: str
+    keywords: List[str]
     bot_response: str
+
+
+@dataclass
+class ConversationAnalytics:
+    """Statistics and metrics about the conversation session."""
+
+    total_turns: int = 0
+    emotion_distribution: Dict[str, int] = field(default_factory=lambda: {
+        "very_unhappy": 0, "unhappy": 0, "neutral": 0, "happy": 0, "very_happy": 0
+    })
+    intent_distribution: Dict[str, int] = field(default_factory=lambda: {
+        "emotional_support": 0, "help_seeking": 0, "information": 0, "small_talk": 0
+    })
+    all_keywords: List[str] = field(default_factory=list)
+    average_emotion_score: float = 0.0
+
+    def update(self, turn: ChatTurn) -> None:
+        """Update analytics with a new chat turn."""
+        self.total_turns += 1
+        self.emotion_distribution[turn.emotion] += 1
+        self.intent_distribution[turn.intent] += 1
+        self.all_keywords.extend(turn.keywords)
+        self._recalculate_average()
+
+    def _recalculate_average(self) -> None:
+        """Calculate average emotion score from all turns."""
+        # Score mapping for emotions
+        turn_scores = []
+        for emotion, count in self.emotion_distribution.items():
+            if emotion == "very_unhappy":
+                score = -1.0
+            elif emotion == "unhappy":
+                score = -0.5
+            elif emotion == "neutral":
+                score = 0.0
+            elif emotion == "happy":
+                score = 0.5
+            else:  # very_happy
+                score = 1.0
+            turn_scores.extend([score] * count)
+
+        if turn_scores:
+            self.average_emotion_score = sum(turn_scores) / len(turn_scores)
+
+    def top_keywords(self, n: int = 10) -> List[tuple[str, int]]:
+        """Return top n keywords by frequency."""
+        return Counter(self.all_keywords).most_common(n)
 
 
 def detect_emotion(
     text: str,
     analyzer: SentimentIntensityAnalyzer,
     thresholds: SentimentThresholds,
-) -> str:
-    """Return happy, neutral, or unhappy based on VADER compound score."""
+) -> tuple[str, float]:
+    """Return emotion label and compound score based on VADER analysis."""
     scores = analyzer.polarity_scores(text)
     compound = scores["compound"]
 
-    if compound >= thresholds.happy:
-        return "happy"
-    if compound <= thresholds.unhappy:
-        return "unhappy"
-    return "neutral"
+    if compound >= thresholds.very_happy:
+        emotion = "very_happy"
+    elif compound >= thresholds.happy:
+        emotion = "happy"
+    elif compound <= thresholds.very_unhappy:
+        emotion = "very_unhappy"
+    elif compound <= thresholds.unhappy:
+        emotion = "unhappy"
+    else:
+        emotion = "neutral"
+
+    return emotion, compound
+
+
+def detect_intent(text: str) -> str:
+    """Classify user intent into categories: emotional_support, help_seeking, information, small_talk."""
+    text_lower = text.lower()
+
+    help_keywords = [
+        "help", "how", "can you", "could you", "would you", "what", "where",
+        "when", "why", "problem", "issue", "error", "fix", "resolve", "need"
+    ]
+    emotional_keywords = [
+        "feel", "feel", "sad", "happy", "frustrated", "angry", "anxious",
+        "worried", "stressed", "depressed", "excited", "love", "hate"
+    ]
+    info_keywords = [
+        "tell", "explain", "what is", "define", "information", "about",
+        "how does", "does", "count", "facts", "news"
+    ]
+
+    if any(keyword in text_lower for keyword in emotional_keywords):
+        return "emotional_support"
+    elif any(keyword in text_lower for keyword in help_keywords):
+        return "help_seeking"
+    elif any(keyword in text_lower for keyword in info_keywords):
+        return "information"
+    else:
+        return "small_talk"
+
+
+def extract_keywords(text: str) -> List[str]:
+    """Extract meaningful keywords from user text."""
+    # Remove common words and punctuation
+    stop_words = {
+        "i", "me", "my", "myself", "we", "our", "you", "your", "he", "she", "it",
+        "what", "which", "who", "when", "where", "why", "how", "all", "each",
+        "every", "both", "few", "more", "some", "such", "no", "nor", "not",
+        "only", "own", "same", "so", "than", "too", "very", "can", "just",
+        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+        "of", "with", "by", "from", "is", "am", "are", "was", "were", "be",
+        "been", "being", "have", "has", "had", "do", "does", "did", "will",
+        "would", "should", "could", "may", "might", "must", "shall"
+    }
+
+    # Convert to lowercase and split
+    text = text.lower()
+    # Remove punctuation
+    text = re.sub(r'[^\w\s]', '', text)
+    words = text.split()
+
+    # Filter out stop words and short words
+    keywords = [w for w in words if w not in stop_words and len(w) > 2]
+    return keywords
 
 
 def build_response(emotion: str, user_text: str) -> str:
