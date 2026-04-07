@@ -356,26 +356,74 @@ class SentimentAwareChatbot:
 
 
 def run_chatbot() -> None:
-    """Run the interactive CLI loop."""
+    """Run the interactive CLI loop with enhanced features."""
     bot = SentimentAwareChatbot()
 
-    print("Sentiment-Aware Chatbot")
-    print("Type 'exit' or 'quit' to stop.")
+    print("=" * 60)
+    print("Sentiment-Aware Chatbot with Intent & Topic Tracking")
+    print("=" * 60)
+    print("Commands:")
+    print("  Type your message to chat")
+    print("  'stats' - Display session analytics")
+    print("  'summary' - Get conversation summary")
+    print("  'history' - Show recent conversation history")
+    print("  'exit' or 'quit' - End the chat")
+    print("=" * 60)
 
     while True:
-        user_text = input("You: ").strip()
+        user_text = input("\nYou: ").strip()
 
         if not user_text:
             print("Bot: I did not catch that. Please type a message.")
             continue
 
         if user_text.lower() in {"exit", "quit"}:
-            print("Bot: Thanks for chatting. Take care.")
+            print("Bot: Thanks for chatting. Take care!")
+            # Show final summary
+            summary = bot.get_session_summary()
+            print(f"\nSession Summary:")
+            print(f"  - Total messages: {summary['total_messages']}")
+            print(f"  - Overall sentiment: {summary['overall_sentiment']}")
+            print(f"  - Average emotion score: {summary['average_emotion_score']}")
             break
 
-        emotion, response = bot.reply(user_text)
+        if user_text.lower() == "stats":
+            summary = bot.get_session_summary()
+            print("\nConversation Analytics:")
+            print(f"  Total messages: {summary['total_messages']}")
+            print(f"  Overall sentiment: {summary['overall_sentiment']}")
+            print(f"  Average emotion score: {summary['average_emotion_score']}")
+            print(f"  Emotion breakdown: {summary['emotion_breakdown']}")
+            print(f"  Intent breakdown: {summary['intent_breakdown']}")
+            if summary['top_keywords']:
+                print(f"  Top keywords: {', '.join([k[0] for k in summary['top_keywords']])}")
+            continue
 
-        print(f"Bot ({emotion}): {response}")
+        if user_text.lower() == "summary":
+            summary = bot.get_session_summary()
+            print("\nConversation Summary:")
+            print(f"  Dominant emotion: {summary['dominant_emotion']}")
+            print(f"  Dominant intent: {summary['dominant_intent']}")
+            print(f"  Total turns: {summary['total_messages']}")
+            print(f"  Sentiment trajectory: {summary['overall_sentiment']}")
+            continue
+
+        if user_text.lower() == "history":
+            if not bot.history:
+                print("\nBot: No chat history yet.")
+            else:
+                print("\nRecent conversation history:")
+                for idx, turn in enumerate(bot.history[-5:], start=1):
+                    print(f"\n{idx}. User: {turn.user_text}")
+                    print(f"   Emotion: {turn.emotion} (score: {turn.emotion_score})")
+                    print(f"   Intent: {turn.intent}")
+                    if turn.keywords:
+                        print(f"   Keywords: {', '.join(turn.keywords[:3])}")
+                    print(f"   Bot: {turn.bot_response}")
+            continue
+
+        emotion, intent, response, score = bot.reply(user_text)
+        print(f"Bot ({emotion}, score: {score}): {response}")
 
 
 if __name__ == "__main__":
