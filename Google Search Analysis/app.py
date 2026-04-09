@@ -9,10 +9,19 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import json
+from pathlib import Path
 import plotly.graph_objects as go
 
+from googl_stock_project import GOOGLStockAnalyzer
 from trend_analyzer import GoogleTrendAnalyzer
 from visualizer import TrendVisualizer
+
+
+BASE_DIR = Path(__file__).resolve().parent
+GOOGL_RAW_PATH = BASE_DIR / "data" / "GOOGL.csv"
+GOOGL_ENRICHED_PATH = BASE_DIR / "data" / "googl_enriched.csv"
+GOOGL_KPI_PATH = BASE_DIR / "reports" / "googl_kpis.json"
+GOOGL_SUMMARY_PATH = BASE_DIR / "reports" / "googl_analysis_summary.txt"
 
 # Page configuration
 st.set_page_config(
@@ -91,6 +100,38 @@ def render_export_section(data: pd.DataFrame, export_format: str, base_name: str
     )
 
 
+def load_googl_outputs() -> tuple[pd.DataFrame, dict]:
+    """Load GOOGL enriched data and KPI JSON produced by the stock project."""
+    if not GOOGL_ENRICHED_PATH.exists() or not GOOGL_KPI_PATH.exists():
+        return pd.DataFrame(), {}
+
+    df = pd.read_csv(GOOGL_ENRICHED_PATH)
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+
+    with GOOGL_KPI_PATH.open("r", encoding="utf-8") as f:
+        kpis = json.load(f)
+
+    return df, kpis
+
+
+def rebuild_googl_outputs() -> None:
+    """Re-run the dataset project so dashboard data and charts are fresh."""
+    if not GOOGL_RAW_PATH.exists():
+        raise FileNotFoundError(f"Missing input dataset at {GOOGL_RAW_PATH}")
+
+    analyzer = GOOGLStockAnalyzer(csv_path=GOOGL_RAW_PATH, ticker="GOOGL")
+    analyzer.load_data()
+    analyzer.engineer_features()
+    analyzer.export_outputs(
+        data_output_path=GOOGL_ENRICHED_PATH,
+        kpi_output_path=GOOGL_KPI_PATH,
+        summary_output_path=GOOGL_SUMMARY_PATH,
+    )
+    analyzer.generate_charts(output_dir=BASE_DIR / "reports")
+
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_cached_trending(country: str) -> list[dict[str, str]]:
     return st.session_state.analyzer.get_trending_searches(country)
@@ -135,7 +176,8 @@ with st.sidebar:
             "Keyword Analysis",
             "Compare Keywords",
             "Regional Analysis",
-            "Seasonal Trends"
+            "Seasonal Trends",
+            "GOOGL Stock Project",
         ]
     )
 
@@ -416,6 +458,133 @@ elif analysis_type == "Seasonal Trends":
                 render_export_section(seasonal_df, export_format, f"seasonal_trends_{keyword.replace(' ', '_')}")
             else:
                 st.warning("No seasonal trend data returned for this keyword.")
+
+elif analysis_type == "GOOGL Stock Project":
+    st.header("GOOGL Stock Analysis Project")
+    st.caption("Interactive view of KPI outputs, enriched features, and project charts from data/GOOGL.csv")
+
+    toolbar_left, toolbar_right = st.columns([3, 1])
+    with toolbar_left:
+        st.write("Use the button to rebuild outputs from the latest CSV before exploring metrics and charts.")
+    with toolbar_right:
+        if st.button("Rebuild Outputs", use_container_width=True):
+            with st.spinner("Recomputing GOOGL project outputs..."):
+                try:
+                    rebuild_googl_outputs()
+                    st.success("Outputs rebuilt successfully.")
+                except Exception as exc:
+                    st.error(f"Failed to rebuild outputs: {exc}")
+
+    googl_df, googl_kpis = load_googl_outputs()
+
+    if googl_df.empty or not googl_kpis:
+        st.warning("GOOGL outputs were not found. Click 'Rebuild Outputs' to generate them from data/GOOGL.csv.")
+        st.stop()
+
+    metric_cols_top = st.columns(4)
+    with metric_cols_top[0]:
+        st.metric("Total Return", f"{googl_kpis.get('total_return_pct', 0)}%")
+    with metric_cols_top[1]:
+        st.metric("CAGR", f"{googl_kpis.get('cagr_pct', 0)}%")
+    with metric_cols_top[2]:
+        st.metric("Annualized Volatility", f"{googl_kpis.get('annualized_volatility_pct', 0)}%")
+    with metric_cols_top[3]:
+        st.metric("Max Drawdown", f"{googl_kpis.get('max_drawdown_pct', 0)}%")
+
+    metric_cols_bottom = st.columns(4)
+    with metric_cols_bottom[0]:
+        st.metric("Best Day", f"{googl_kpis.get('best_day_return_pct', 0)}%")
+    with metric_cols_bottom[1]:
+        st.metric("Worst Day", f"{googl_kpis.get('worst_day_return_pct', 0)}%")
+    with metric_cols_bottom[2]:
+        st.metric("Trading Days", int(googl_kpis.get("trading_days", 0)))
+    with metric_cols_bottom[3]:
+        st.metric("Trend Signal", str(googl_kpis.get("trend_signal", "N/A")).upper())
+
+    min_date = googl_df["Date"].min().date()
+    max_date = googl_df["Date"].max().date()
+    selected_range = st.date_input(
+        "Filter Date Range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date,
+    )
+
+    if isinstance(selected_range, tuple) and len(selected_range) == 2:
+        start_date, end_date = selected_range
+    else:
+        start_date, end_date = min_date, max_date
+
+    filtered = googl_df[(googl_df["Date"].dt.date >= start_date) & (googl_df["Date"].dt.date <= end_date)].copy()
+
+    if filtered.empty:
+        st.warning("No rows in the selected date range.")
+        st.stop()
+
+    st.subheader("Price Trend with Moving Averages")
+    price_fig = go.Figure()
+    price_fig.add_trace(go.Scatter(x=filtered["Date"], y=filtered["Adj Close"], mode="lines", name="Adj Close"))
+    price_fig.add_trace(go.Scatter(x=filtered["Date"], y=filtered["sma_20"], mode="lines", name="SMA 20"))
+    price_fig.add_trace(go.Scatter(x=filtered["Date"], y=filtered["sma_50"], mode="lines", name="SMA 50"))
+    price_fig.add_trace(go.Scatter(x=filtered["Date"], y=filtered["sma_200"], mode="lines", name="SMA 200"))
+    price_fig.update_layout(height=500, xaxis_title="Date", yaxis_title="Price", hovermode="x unified")
+    st.plotly_chart(price_fig, use_container_width=True)
+
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        st.subheader("Daily Return Distribution")
+        returns = filtered["daily_return"].dropna()
+        hist_fig = go.Figure(data=[go.Histogram(x=returns, nbinsx=70)])
+        hist_fig.update_layout(height=400, xaxis_title="Daily Return", yaxis_title="Frequency")
+        st.plotly_chart(hist_fig, use_container_width=True)
+
+    with chart_col2:
+        st.subheader("Drawdown Curve")
+        dd_fig = go.Figure()
+        dd_fig.add_trace(
+            go.Scatter(
+                x=filtered["Date"],
+                y=filtered["drawdown"],
+                mode="lines",
+                fill="tozeroy",
+                name="Drawdown",
+            )
+        )
+        dd_fig.update_layout(height=400, xaxis_title="Date", yaxis_title="Drawdown")
+        st.plotly_chart(dd_fig, use_container_width=True)
+
+    st.subheader("Volume and 30D Volume Z-Score")
+    volume_fig = go.Figure()
+    volume_fig.add_trace(go.Bar(x=filtered["Date"], y=filtered["Volume"], name="Volume", opacity=0.55))
+    volume_fig.add_trace(go.Scatter(x=filtered["Date"], y=filtered["volume_zscore_30d"], mode="lines", name="Volume Z-Score (30D)", yaxis="y2"))
+    volume_fig.update_layout(
+        height=420,
+        xaxis_title="Date",
+        yaxis=dict(title="Volume"),
+        yaxis2=dict(title="Z-Score", overlaying="y", side="right"),
+        hovermode="x unified",
+    )
+    st.plotly_chart(volume_fig, use_container_width=True)
+
+    st.subheader("Filtered Enriched Dataset")
+    st.dataframe(filtered, use_container_width=True)
+    render_export_section(filtered, export_format, "googl_enriched_filtered")
+
+    if GOOGL_SUMMARY_PATH.exists():
+        st.subheader("Text Summary")
+        st.text(GOOGL_SUMMARY_PATH.read_text(encoding="utf-8"))
+
+    png_candidates = [
+        BASE_DIR / "reports" / "googl_price_trend.png",
+        BASE_DIR / "reports" / "googl_returns_distribution.png",
+        BASE_DIR / "reports" / "googl_drawdown.png",
+    ]
+    existing_pngs = [p for p in png_candidates if p.exists()]
+    if existing_pngs:
+        st.subheader("Generated PNG Reports")
+        for path in existing_pngs:
+            st.image(str(path), caption=path.name, use_container_width=True)
 
 # Footer
 st.divider()
