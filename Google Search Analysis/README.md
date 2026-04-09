@@ -2,6 +2,57 @@
 
 Comprehensive tool for analyzing and visualizing Google search trends using Pytrends. Discover what people are searching for, identify emerging trends, and understand regional search patterns.
 
+## Dataset Project: GOOGL Historical Stock Analysis
+
+This repository now includes a complete, dataset-driven stock analysis pipeline using `data/GOOGL.csv` (daily OHLCV data).
+
+### What This Project Produces
+
+- Cleaned and enriched stock dataset with engineered features
+- KPI report in JSON format for downstream applications
+- Text summary report for quick business interpretation
+- Visualization set for trend, return distribution, and drawdown
+
+### Engineered Features
+
+- Daily return and log return
+- Moving averages (20-day, 50-day, 200-day)
+- 30-day rolling annualized volatility
+- Cumulative return
+- Running peak and drawdown
+- 30-day volume z-score (activity anomaly signal)
+
+### KPI Metrics
+
+- Total return (%)
+- CAGR (%)
+- Annualized volatility (%)
+- Maximum drawdown (%)
+- Best and worst daily return (%)
+- Average and median daily volume
+- SMA-based trend signal (`bullish`, `bearish`, `mixed`)
+
+### Run the GOOGL Project
+
+```bash
+python run_googl_stock_project.py
+```
+
+Optional custom input path:
+
+```bash
+python run_googl_stock_project.py --input data/GOOGL.csv
+```
+
+### Output Files
+
+- `data/googl_enriched.csv`
+- `reports/googl_kpis.json`
+- `reports/googl_analysis_summary.txt`
+- `reports/googl_price_trend.png`
+- `reports/googl_returns_distribution.png`
+- `reports/googl_drawdown.png`
+
 ## Overview
 
 Google handles over billions of searches every day and trillions of searches each year. This project provides powerful Python tools to access, analyze, and visualize Google Trends data. Use it to:
