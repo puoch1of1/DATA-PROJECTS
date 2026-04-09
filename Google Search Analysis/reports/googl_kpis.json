@@ -1,0 +1,20 @@
+{
+  "ticker": "GOOGL",
+  "start_date": "2004-08-19",
+  "end_date": "2022-03-24",
+  "trading_days": 4431,
+  "start_close": 50.2202,
+  "end_close": 2831.4399,
+  "total_return_pct": 5538.05,
+  "cagr_pct": 25.76,
+  "annualized_volatility_pct": 30.29,
+  "max_drawdown_pct": -65.29,
+  "best_day_return_pct": 19.99,
+  "worst_day_return_pct": -11.63,
+  "average_daily_volume": 6444992.36,
+  "median_daily_volume": 3778418.0,
+  "latest_20d_sma": 2667.3695,
+  "latest_50d_sma": 2693.7204,
+  "latest_200d_sma": 2746.8831,
+  "trend_signal": "bearish"
+}
