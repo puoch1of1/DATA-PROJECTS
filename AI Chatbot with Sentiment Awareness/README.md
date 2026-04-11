@@ -1,6 +1,6 @@
 # AI Chatbot with Sentiment Awareness
 
-An intelligent conversational AI that uses advanced NLP to understand user emotions, intents, and topics. The chatbot detects emotional nuances, understands user needs, and provides context-aware, empathetic responses.
+An intelligent conversational AI that uses advanced NLP to understand user emotions, intents, and topics.
 
 ## Core Features
 
