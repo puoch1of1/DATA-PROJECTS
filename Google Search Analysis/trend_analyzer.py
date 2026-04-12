@@ -10,14 +10,12 @@ Provides functionality to:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional
+from pathlib import Path
+from typing import Dict, List, Optional
 import pandas as pd
-import pytrends
 from pytrends.request import TrendReq
 
 from dataclasses import dataclass
-from collections import Counter
 
 
 @dataclass
@@ -46,6 +44,24 @@ class GoogleTrendAnalyzer:
         self.pytrends = TrendReq(hl=language, tz=360, timeout=timeout, retries=3)
         self.language = language
         self.last_query_data: Optional[pd.DataFrame] = None
+
+    @staticmethod
+    def _normalize_keywords(keywords: List[str], max_keywords: int = 5) -> List[str]:
+        """Normalize keywords into unique, non-empty values while preserving order."""
+        normalized: List[str] = []
+        seen: set[str] = set()
+
+        for item in keywords:
+            keyword = item.strip()
+            lowered = keyword.lower()
+            if keyword and lowered not in seen:
+                seen.add(lowered)
+                normalized.append(keyword)
+
+        if not normalized:
+            raise ValueError("At least one non-empty keyword is required")
+
+        return normalized[:max_keywords]
 
     def get_trending_searches(self, country: str = "US") -> List[Dict[str, str]]:
         """Fetch current trending searches in a country.
@@ -81,7 +97,8 @@ class GoogleTrendAnalyzer:
         """
         try:
             suggestions = self.pytrends.suggestions(keyword)
-            return [s["mid"] for s in suggestions if "mid" in s]
+            titles = [s.get("title", "").strip() for s in suggestions]
+            return [title for title in titles if title]
         except Exception as e:
             print(f"Error fetching suggestions for '{keyword}': {e}")
             return []
@@ -100,8 +117,7 @@ class GoogleTrendAnalyzer:
         Returns:
             DataFrame with dates and interest levels (0-100) for each keyword
         """
-        if len(keywords) > 5:
-            raise ValueError("Maximum 5 keywords allowed")
+        keywords = self._normalize_keywords(keywords)
 
         try:
             self.pytrends.build_payload(keywords, timeframe=timeframe)
@@ -129,8 +145,7 @@ class GoogleTrendAnalyzer:
         Returns:
             DataFrame with regions and interest levels for each keyword
         """
-        if len(keywords) > 5:
-            raise ValueError("Maximum 5 keywords allowed")
+        keywords = self._normalize_keywords(keywords)
 
         try:
             self.pytrends.build_payload(keywords, timeframe=timeframe)
@@ -187,6 +202,7 @@ class GoogleTrendAnalyzer:
         Returns:
             DataFrame with normalized interest levels for each keyword
         """
+        keywords = self._normalize_keywords(keywords)
         data = self.get_interest_over_time(keywords, timeframe)
         return data
 
@@ -299,6 +315,7 @@ class GoogleTrendAnalyzer:
         Returns:
             DataFrame with statistics for each keyword
         """
+        keywords = self._normalize_keywords(keywords)
         stats = []
 
         for keyword in keywords:
@@ -324,6 +341,7 @@ class GoogleTrendAnalyzer:
             filename: Output CSV filename
         """
         try:
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
             data.to_csv(filename)
             print(f"Data exported to {filename}")
         except Exception as e:
@@ -337,6 +355,7 @@ class GoogleTrendAnalyzer:
             filename: Output JSON filename
         """
         try:
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
             data.to_json(filename, orient="table", indent=2)
             print(f"Data exported to {filename}")
         except Exception as e:
