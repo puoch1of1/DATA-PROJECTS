@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import streamlit as st
 import pandas as pd
-from collections import Counter
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -41,7 +40,7 @@ with st.sidebar:
     st.header("Chatbot Settings & Analytics")
 
     # Theme selection
-    theme = st.radio("Select response tone:", ["Supportive", "Analytical", "Casual"])
+    response_tone = st.radio("Select response tone:", ["Supportive", "Analytical", "Casual"], index=0)
 
     st.divider()
 
@@ -129,11 +128,11 @@ if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     # Get bot response
-    emotion, intent, response, score = st.session_state.bot.reply(prompt)
+    emotion, intent, response, score = st.session_state.bot.reply(prompt, response_tone=response_tone.lower())
 
     # Format bot response with metadata
     bot_metadata = f"""
-**Detected Emotion:** {emotion.replace('_', ' ').title()} (confidence: {score})
+**Detected Emotion:** {emotion.replace('_', ' ').title()} (confidence: {score:.2f})
 
 **Intent:** {intent.replace('_', ' ').title()}
 
