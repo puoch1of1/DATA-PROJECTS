@@ -90,7 +90,7 @@ Bot (very_happy, score: 0.85): That's wonderful! Your enthusiasm is truly infect
 
 You: help
 User Intent: help_seeking
-Bot (information, score: 0.0): I'm here to help. Can you walk me through what you need?
+Bot (neutral, score: 0.0): I'm here to help. Can you walk me through what you need?
 
 You: stats
 [Displays emotion distribution, intent breakdown, and top keywords]
@@ -108,6 +108,7 @@ Then open your browser to `http://localhost:8501`
 **Dashboard Features:**
 - **Chat Interface**: Real-time conversation with emotion detection
 - **Sidebar Analytics**: Live metrics and visualizations
+- **Response Tone Selector**: Switch between supportive, analytical, and casual replies
 - **Detailed History**: Table view of all conversation turns with metadata
 - **Sentiment Trajectory**: Visual line chart of emotional progression over time
 - **Export Options**: Generate session summaries and clear conversation history
