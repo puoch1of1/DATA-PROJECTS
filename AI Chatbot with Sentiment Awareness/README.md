@@ -26,14 +26,14 @@ The chatbot identifies 4 user intents:
 ### 4. **Intelligent Response Generation**
 - **Context-Aware Responses**: Different templates based on emotion + intent combination
 - **Memory-Based**: Responses reference emotional trajectory and previous interactions
-- **Response Variety**: Multiple response options to avoid repetition
+- **Response Variety**: Randomized response templates help avoid repetition
 - **Progressive Sensitivity**: More empathetic language for negative emotions
 
 ### 5. **Session Analytics & Insights**
 - **Emotion Distribution**: Pie chart showing emotion breakdown
 - **Intent Analysis**: Bar chart of user request types
 - **Sentiment Trajectory**: Line chart showing emotional progression
-- **Keyword Cloud**: Visualization of discussion topics
+- **Topic Chart**: Bar chart of the most discussed keywords
 - **Session Metrics**: Total messages, average emotion score, dominant emotion/intent
 
 ### 6. **Conversation Memory**
@@ -55,7 +55,7 @@ The chatbot identifies 4 user intents:
 1. Clone or download this folder
 2. Navigate to the project directory:
 ```bash
-cd "AI Chatbot with Sentiment Awareness"
+cd "DATA-PROJECTS/AI Chatbot with Sentiment Awareness"
 ```
 
 3. Install dependencies:
@@ -90,7 +90,7 @@ Bot (very_happy, score: 0.85): That's wonderful! Your enthusiasm is truly infect
 
 You: help
 User Intent: help_seeking
-Bot (neutral, score: 0.0): With this positive energy, you're in a great place to tackle challenges. How can I help?
+Bot (information, score: 0.0): I'm here to help. Can you walk me through what you need?
 
 You: stats
 [Displays emotion distribution, intent breakdown, and top keywords]
@@ -118,7 +118,7 @@ Then open your browser to `http://localhost:8501`
 ### Example 1: Positive Emotion + Emotional Support Intent
 ```
 You: I finally completed my certification and I'm so proud!
-Bot (very_happy, score: 0.87): That's wonderful! Your enthusiasm is truly infectious. Keep riding this positive wave! I also notice you sound amazing, which is wonderful progress.
+Bot (very_happy, score: 0.87): That's wonderful! Your enthusiasm is truly infectious. Keep riding this positive wave! I also notice you sound better than before, which is wonderful progress.
 ```
 
 ### Example 2: Negative Emotion + Help Seeking Intent
