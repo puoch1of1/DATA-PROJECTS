@@ -18,8 +18,9 @@ Features include:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import Any, Dict, List
 from collections import Counter
+import random
 import re
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -70,24 +71,22 @@ class ConversationAnalytics:
         self._recalculate_average()
 
     def _recalculate_average(self) -> None:
-        """Calculate average emotion score from all turns."""
-        # Score mapping for emotions
-        turn_scores = []
-        for emotion, count in self.emotion_distribution.items():
-            if emotion == "very_unhappy":
-                score = -1.0
-            elif emotion == "unhappy":
-                score = -0.5
-            elif emotion == "neutral":
-                score = 0.0
-            elif emotion == "happy":
-                score = 0.5
-            else:  # very_happy
-                score = 1.0
-            turn_scores.extend([score] * count)
+        """Calculate average emotion score from the stored turn history."""
+        if not self.total_turns:
+            self.average_emotion_score = 0.0
+            return
 
-        if turn_scores:
-            self.average_emotion_score = sum(turn_scores) / len(turn_scores)
+        emotion_scores = {
+            "very_unhappy": -1.0,
+            "unhappy": -0.5,
+            "neutral": 0.0,
+            "happy": 0.5,
+            "very_happy": 1.0,
+        }
+        weighted_total = sum(
+            emotion_scores[emotion] * count for emotion, count in self.emotion_distribution.items()
+        )
+        self.average_emotion_score = weighted_total / self.total_turns
 
     def top_keywords(self, n: int = 10) -> List[tuple[str, int]]:
         """Return top n keywords by frequency."""
@@ -122,24 +121,33 @@ def detect_intent(text: str) -> str:
     text_lower = text.lower()
 
     help_keywords = [
-        "help", "how", "can you", "could you", "would you", "what", "where",
-        "when", "why", "problem", "issue", "error", "fix", "resolve", "need"
+        "help", "can you", "could you", "would you", "problem", "issue",
+        "error", "fix", "resolve", "need", "assist", "support"
     ]
     emotional_keywords = [
-        "feel", "feel", "sad", "happy", "frustrated", "angry", "anxious",
+        "feel", "sad", "happy", "frustrated", "angry", "anxious",
         "worried", "stressed", "depressed", "excited", "love", "hate"
     ]
     info_keywords = [
-        "tell", "explain", "what is", "define", "information", "about",
-        "how does", "does", "count", "facts", "news"
+        "tell", "explain", "what is", "what's", "define", "information",
+        "about", "how does", "does", "count", "facts", "news",
+        "difference", "compare", "meaning", "details"
+    ]
+
+    info_patterns = [
+        r"\bwhat(?:'s| is)\b",
+        r"\bhow does\b",
+        r"\bdifference between\b",
+        r"\bcompare\b",
+        r"\bdefine\b",
     ]
 
     if any(keyword in text_lower for keyword in emotional_keywords):
         return "emotional_support"
+    elif any(re.search(pattern, text_lower) for pattern in info_patterns) or any(keyword in text_lower for keyword in info_keywords):
+        return "information"
     elif any(keyword in text_lower for keyword in help_keywords):
         return "help_seeking"
-    elif any(keyword in text_lower for keyword in info_keywords):
-        return "information"
     else:
         return "small_talk"
 
@@ -169,7 +177,7 @@ def extract_keywords(text: str) -> List[str]:
     return keywords
 
 
-def build_response(emotion: str, intent: str, user_text: str) -> str:
+def build_response(emotion: str, intent: str, user_text: str, response_tone: str = "supportive") -> str:
     """Create a response adapted to emotion and intent."""
     # Response templates by emotion and intent
     responses = {
@@ -271,8 +279,14 @@ def build_response(emotion: str, intent: str, user_text: str) -> str:
         # Fallback response
         return "I'm here to help. Tell me more about what you're experiencing."
 
-    # Alternate responses for variety (could use counter in real app)
-    return template_list[0] if len(template_list) > 0 else template_list[-1]
+    response = random.choice(template_list)
+
+    tone_suffixes = {
+        "supportive": "",
+        "analytical": " Let's approach this step by step and keep it practical.",
+        "casual": " We can keep it simple and conversational.",
+    }
+    return f"{response}{tone_suffixes.get(response_tone, '')}"
 
 
 def build_response_with_memory(
@@ -280,9 +294,10 @@ def build_response_with_memory(
     intent: str,
     user_text: str,
     history: List[ChatTurn],
+    response_tone: str = "supportive",
 ) -> str:
     """Adapt response using emotion, intent, and recent chat memory."""
-    base_response = build_response(emotion, intent, user_text)
+    base_response = build_response(emotion, intent, user_text, response_tone=response_tone)
 
     if not history:
         return f"{base_response}"
@@ -321,12 +336,18 @@ class SentimentAwareChatbot:
         self.history: List[ChatTurn] = []
         self.analytics = ConversationAnalytics()
 
-    def reply(self, user_text: str) -> tuple[str, str, str, str]:
+    def reply(self, user_text: str, response_tone: str = "supportive") -> tuple[str, str, str, float]:
         """Return emotion, sentiment_score, intent, and bot response, then store the turn."""
         emotion, score = detect_emotion(user_text, self.analyzer, self.thresholds)
         intent = detect_intent(user_text)
         keywords = extract_keywords(user_text)
-        response = build_response_with_memory(emotion, intent, user_text, self.history)
+        response = build_response_with_memory(
+            emotion,
+            intent,
+            user_text,
+            self.history,
+            response_tone=response_tone,
+        )
 
         turn = ChatTurn(
             user_text=user_text,
@@ -339,10 +360,12 @@ class SentimentAwareChatbot:
         self.history.append(turn)
         self.analytics.update(turn)
 
-        return emotion, intent, response, str(round(score, 2))
+        return emotion, intent, response, round(score, 2)
 
-    def get_session_summary(self) -> Dict[str, any]:
+    def get_session_summary(self) -> Dict[str, Any]:
         """Return comprehensive session statistics."""
+        dominant_emotion = max(self.analytics.emotion_distribution, key=self.analytics.emotion_distribution.get)
+        dominant_intent = max(self.analytics.intent_distribution, key=self.analytics.intent_distribution.get)
         return {
             "total_messages": self.analytics.total_turns,
             "overall_sentiment": "positive" if self.analytics.average_emotion_score > 0 else "negative" if self.analytics.average_emotion_score < 0 else "neutral",
@@ -350,8 +373,8 @@ class SentimentAwareChatbot:
             "emotion_breakdown": self.analytics.emotion_distribution.copy(),
             "intent_breakdown": self.analytics.intent_distribution.copy(),
             "top_keywords": self.analytics.top_keywords(5),
-            "dominant_emotion": max(self.analytics.emotion_distribution, key=self.analytics.emotion_distribution.get),
-            "dominant_intent": max(self.analytics.intent_distribution, key=self.analytics.intent_distribution.get),
+            "dominant_emotion": dominant_emotion if self.analytics.total_turns else "neutral",
+            "dominant_intent": dominant_intent if self.analytics.total_turns else "small_talk",
         }
 
 
