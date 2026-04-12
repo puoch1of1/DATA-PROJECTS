@@ -177,6 +177,16 @@ def extract_keywords(text: str) -> List[str]:
     return keywords
 
 
+def apply_response_tone(response: str, response_tone: str) -> str:
+    """Adjust the response ending to match the selected tone."""
+    tone_suffixes = {
+        "supportive": "",
+        "analytical": " Let's approach this step by step and keep it practical.",
+        "casual": " We can keep it simple and conversational.",
+    }
+    return f"{response}{tone_suffixes.get(response_tone, '')}"
+
+
 def build_response(emotion: str, intent: str, user_text: str, response_tone: str = "supportive") -> str:
     """Create a response adapted to emotion and intent."""
     # Response templates by emotion and intent
@@ -280,13 +290,7 @@ def build_response(emotion: str, intent: str, user_text: str, response_tone: str
         return "I'm here to help. Tell me more about what you're experiencing."
 
     response = random.choice(template_list)
-
-    tone_suffixes = {
-        "supportive": "",
-        "analytical": " Let's approach this step by step and keep it practical.",
-        "casual": " We can keep it simple and conversational.",
-    }
-    return f"{response}{tone_suffixes.get(response_tone, '')}"
+    return apply_response_tone(response, response_tone)
 
 
 def build_response_with_memory(
@@ -297,34 +301,49 @@ def build_response_with_memory(
     response_tone: str = "supportive",
 ) -> str:
     """Adapt response using emotion, intent, and recent chat memory."""
-    base_response = build_response(emotion, intent, user_text, response_tone=response_tone)
+    base_response = build_response(emotion, intent, user_text)
 
     if not history:
-        return f"{base_response}"
+        return apply_response_tone(base_response, response_tone)
 
     last_turn = history[-1]
 
     # Track emotional trajectory
     if emotion in ["happy", "very_happy"] and last_turn.emotion in ["unhappy", "very_unhappy"]:
-        return (
+        return apply_response_tone(
+            (
             f"{base_response} I also notice you sound better than before, "
             "which is wonderful progress."
+            ),
+            response_tone,
         )
 
     if emotion in ["unhappy", "very_unhappy"] and last_turn.emotion in ["happy", "very_happy"]:
-        return (
+        return apply_response_tone(
+            (
             f"{base_response} You sounded more positive earlier, so let's remember "
             "what was working then."
+            ),
+            response_tone,
         )
 
     if emotion == last_turn.emotion:
-        return f"{base_response} I can see this feeling is continuing from before."
+        return apply_response_tone(
+            f"{base_response} I can see this feeling is continuing from before.",
+            response_tone,
+        )
 
     # If intent repeated
     if intent == last_turn.intent and history:
-        return f"{base_response} It seems this is still on your mind."
+        return apply_response_tone(
+            f"{base_response} It seems this is still on your mind.",
+            response_tone,
+        )
 
-    return f"{base_response} I'm noticing a shift in what you're bringing up."
+    return apply_response_tone(
+        f"{base_response} I'm noticing a shift in what you're bringing up.",
+        response_tone,
+    )
 
 
 class SentimentAwareChatbot:
