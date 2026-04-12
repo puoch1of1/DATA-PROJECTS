@@ -6,11 +6,10 @@ Demonstrates core functionality of the trend analyzer module with interactive fe
 from __future__ import annotations
 
 import sys
-from datetime import datetime
-import pandas as pd
+from typing import List
 
 from trend_analyzer import GoogleTrendAnalyzer
-from visualizer import TrendVisualizer, generate_text_report
+from visualizer import TrendVisualizer
 
 
 def print_section(title: str) -> None:
@@ -113,7 +112,10 @@ def analyze_by_region(analyzer: GoogleTrendAnalyzer, keyword: str) -> None:
     print("\nTop 15 Regions by Interest:")
     print("-" * 50)
 
-    for idx, (region, interest) in enumerate(regional_data.head(15).items(), 1):
+    primary_col = regional_data.columns[0]
+    ranked = regional_data.sort_values(by=primary_col, ascending=False).head(15)[primary_col]
+
+    for idx, (region, interest) in enumerate(ranked.items(), 1):
         bar_length = int(interest / 5)
         print(f"  {idx:2d}. {region:20s}: {'█' * bar_length} {int(interest)}")
 
