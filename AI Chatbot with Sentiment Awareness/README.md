@@ -90,7 +90,7 @@ Bot (very_happy, score: 0.85): That's wonderful! Your enthusiasm is truly infect
 
 You: help
 User Intent: help_seeking
-Bot (neutral, score: 0.0): I'm here to help. Can you walk me through what you need?
+Bot (happy, score: 0.4): This is a good mindset for problem-solving. What's the issue you'd like to address?
 
 You: stats
 [Displays emotion distribution, intent breakdown, and top keywords]
