@@ -42,6 +42,24 @@ The chatbot identifies 4 user intents:
 - References prior context in bot responses
 - Detailed conversation history with metadata
 
+## Recent Updates
+
+1. Randomized response templates instead of always returning the first option.
+2. Tone selection in the Streamlit sidebar now affects generated replies.
+3. Final memory-aware responses now keep the selected tone.
+4. Sentiment scores are returned as numeric values instead of strings.
+5. Average emotion is computed from the actual turn history.
+6. Intent detection checks information queries before help-seeking fallbacks.
+7. Intent matching uses more precise patterns for question-style prompts.
+8. Duplicate emotional keywords were removed from the classifier.
+9. Information keywords were expanded to better cover comparison questions.
+10. The Streamlit app no longer imports unused modules.
+11. The README install path now matches this workspace layout.
+12. The keyword cloud description now matches the actual bar chart.
+13. Dashboard docs now mention the response tone selector.
+14. Example outputs were updated to match the observed chatbot behavior.
+15. Session summary fields now handle empty-history cases safely.
+
 ## Tech Stack
 
 - **Python 3.9+**
