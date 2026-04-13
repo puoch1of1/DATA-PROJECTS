@@ -1,4 +1,23 @@
-"""Streamlit Web Dashboard for Google Search Trends Analysis.
+"""
+STREAMLIT WEB DASHBOARD
+=======================
+Interactive web interface for Google Trends analysis and GOOGL stock data.
+
+Use this for:
+  • Visual exploration of search trends
+  • Interactive charts and comparisons
+  • Sharing results via web interface
+  • Real-time metric calculations
+
+To run:
+  streamlit run app.py
+
+Then open browser to: http://localhost:8501
+
+NOTE: If you prefer command-line interaction, use main.py instead.
+      If you need batch processing, use run_googl_stock_project.py.
+
+Streamlit Web Dashboard for Google Search Trends Analysis.
 
 Interactive dashboard for exploring and visualizing Google search trends.
 """
