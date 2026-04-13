@@ -1,4 +1,22 @@
-"""Main Google Trends Analysis Script.
+"""
+COMMAND-LINE INTERFACE (CLI)
+============================
+Interactive text-based tool for Google Trends analysis.
+
+Use this for:
+  • Command-line analysis workflows  
+  • Interactive menu-driven exploration
+  • Quick trend investigations
+  • Sample batch analyses with --mode sample
+
+To run:
+  python main.py                    # Interactive menu
+  python main.py --mode sample      # Run sample analysis
+
+NOTE: If you prefer a visual web interface, use app.py instead.
+      Run: streamlit run app.py
+
+Main Google Trends Analysis Script.
 
 Demonstrates core functionality of the trend analyzer module with interactive features.
 """
