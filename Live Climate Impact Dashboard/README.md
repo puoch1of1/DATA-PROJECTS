@@ -124,6 +124,31 @@ The dashboard opens at `http://localhost:8501`
 - Wider intervals = higher uncertainty
 - Intervals expand further into the future
 
+### About Data Caching & Performance
+
+The dashboard uses intelligent caching to improve performance and reduce API calls:
+
+**Cache Behavior:**
+- **Temperature data**: Cached for 30 minutes (refreshes automatically)
+- **CO2 data**: Cached for 1 hour (less frequent updates needed)
+- **Forecast results**: Cached until refresh or Streamlit restart
+
+**Benefits:**
+- Faster dashboard interactions and tab switching
+- Reduced API rate limiting (especially important for NOAA)
+- Lower latency when re-running analyses with same parameters
+
+**Manually Clear Cache:**
+- Use the **"Refresh Data"** button in the sidebar settings
+- This fetches fresh data from all APIs immediately
+- Cache automatically refreshes after TTL (time-to-live) expires
+
+**Tips for Best Performance:**
+- Use the Refresh button sparingly (respects API rate limits)
+- Select narrower date ranges for faster analysis
+- Reduce forecast horizon for quicker Prophet computations
+- The dashboard remembers your last parameters within the session
+
 ## 🔴 Common Issues
 
 **"Insufficient data for forecasting"**
