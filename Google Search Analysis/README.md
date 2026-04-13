@@ -154,6 +154,20 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Quick Start: Choose Your Interface
+
+This project offers **two entry points** depending on your use case:
+
+| Interface | Command | Best For | Use When |
+|-----------|---------|----------|----------|
+| **Web Dashboard** | `streamlit run app.py` | Visual exploration, sharing results | You want an interactive UI, need to present findings |
+| **CLI Tool** | `python main.py` | Quick analysis, scripting, automation | You prefer command-line, need batch processing |
+
+**First time?** Start with the web dashboard:
+```bash
+streamlit run app.py
+```
+
 ## Usage
 
 ### Command-Line Interface (Interactive)
