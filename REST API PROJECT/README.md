@@ -47,6 +47,7 @@ Useful options:
 python run_pipeline.py --country SSD --db database/worldbank.db --table development_indicators
 python run_pipeline.py --export-csv data/cleaned/south_sudan_clean.csv
 python run_pipeline.py --export-csv ""
+python run_pipeline.py --skip-verify
 ```
 
 ### Run individual stages
@@ -55,11 +56,13 @@ python run_pipeline.py --export-csv ""
 python scripts/extract.py --country SSD --indicator SP.POP.TOTL --output data/south_sudan_population.json
 python scripts/transform.py
 python scripts/load.py
-python scripts/verify.py
+python scripts/verify.py --db database/worldbank.db --table development_indicators --limit 10
 ```
 
 ### Notes
 
 - Loader auto-creates table if missing and syncs the `ingested_at` column if older schema exists.
+- Loader enforces uniqueness with a business-key index on (`country`, `year`, `indicator`).
 - Loads are idempotent by business key (`country`, `year`, `indicator`) to avoid duplicate rows.
-- `verify.py` prints row totals, null checks, and latest rows for quick QA.
+- `run_pipeline.py` runs post-load verification by default (disable with `--skip-verify`).
+- `verify.py` reports row totals, null checks, duplicate business keys, indicator coverage (`min_year`/`max_year`), and latest rows.
