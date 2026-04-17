@@ -1,9 +1,17 @@
 import os
+import re
 import sqlite3
 
 import pandas as pd
 
 REQUIRED_COLUMNS = ["country", "year", "indicator", "value", "ingested_at"]
+
+
+def _validate_table_name(table_name: str):
+    if not isinstance(table_name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table_name):
+        raise ValueError(
+            "Invalid table name. Use only letters, numbers, and underscore, and start with a letter or underscore."
+        )
 
 
 def _normalize_dataframe(df: pd.DataFrame):
@@ -69,6 +77,13 @@ def _ensure_table_schema(conn: sqlite3.Connection, table_name: str):
     if "ingested_at" not in existing_cols:
         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN ingested_at TEXT")
 
+    conn.execute(
+        f"""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_business_key
+        ON {table_name} (country, year, indicator)
+        """
+    )
+
 
 def _delete_existing_keys(conn: sqlite3.Connection, table_name: str, df: pd.DataFrame):
     keys = list({(row.country, int(row.year), row.indicator) for row in df.itertuples(index=False)})
@@ -82,6 +97,7 @@ def _delete_existing_keys(conn: sqlite3.Connection, table_name: str, df: pd.Data
 
 
 def load_to_sqlite(df, db_path, table_name):
+    _validate_table_name(table_name)
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     prepared_df = _normalize_dataframe(df)
     if prepared_df.empty:
