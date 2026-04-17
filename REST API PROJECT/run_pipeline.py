@@ -7,6 +7,7 @@ import pandas as pd
 from scripts.worldbank_client import WorldBankClient
 from scripts.transform import transform_indicator
 from scripts.load import load_to_sqlite
+from scripts.verify import verify_table
 
 COUNTRY_CODE = "SSD"
 DB_PATH = Path("database/worldbank.db")
@@ -19,7 +20,13 @@ INDICATORS = {
 }
 
 
-def run_pipeline(country_code: str, db_path: Path, table_name: str, export_csv_path: Path | None):
+def run_pipeline(
+    country_code: str,
+    db_path: Path,
+    table_name: str,
+    export_csv_path: Path | None,
+    verify_after_load: bool,
+):
     client = WorldBankClient()
     ingestion_time = datetime.now(timezone.utc).isoformat()
 
@@ -52,6 +59,20 @@ def run_pipeline(country_code: str, db_path: Path, table_name: str, export_csv_p
         table_name
     )
 
+    if verify_after_load:
+        verification = verify_table(db_path, table_name)
+        duplicate_count = len(verification["duplicate_keys"])
+        if duplicate_count > 0:
+            raise RuntimeError(
+                f"Post-load verification found {duplicate_count} duplicate business keys."
+            )
+
+        print(
+            "Verification summary: "
+            f"rows={verification['row_count']}, "
+            f"nulls={verification['null_summary']}"
+        )
+
     if export_csv_path is not None:
         export_csv_path.parent.mkdir(parents=True, exist_ok=True)
         final_df.to_csv(export_csv_path, index=False)
@@ -70,6 +91,11 @@ def parse_args():
         default="data/cleaned/south_sudan_clean.csv",
         help="Optional cleaned CSV path; pass empty string to disable",
     )
+    parser.add_argument(
+        "--skip-verify",
+        action="store_true",
+        help="Skip post-load verification checks",
+    )
     return parser.parse_args()
 
 
@@ -86,7 +112,13 @@ def main():
         candidate = Path(args.export_csv)
         export_csv_path = candidate if candidate.is_absolute() else project_root / candidate
 
-    run_pipeline(args.country, db_path, args.table, export_csv_path)
+    run_pipeline(
+        args.country,
+        db_path,
+        args.table,
+        export_csv_path,
+        verify_after_load=not args.skip_verify,
+    )
 
     print("Pipeline completed successfully.")
 
