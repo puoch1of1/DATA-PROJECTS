@@ -458,18 +458,17 @@ def build_recency_weighted_category_momentum(df, half_life_days=30):
     decay_lambda = np.log(2) / safe_half_life
     local_df['Recency_Weight'] = np.exp(-decay_lambda * age_days)
 
-    weighted = (
-        local_df.groupby('Keyword')
-        .apply(
-            lambda g: pd.Series({
-                'Video_Count': len(g),
-                'Weighted_Avg_Views': np.average(g['Views'], weights=g['Recency_Weight']),
-                'Weighted_Avg_Engagement': np.average(g['Engagement_Rate'], weights=g['Recency_Weight']),
-                'Latest_Video_Date': g['Published At'].max(),
-            })
-        )
-        .reset_index()
-    )
+    weighted_rows = []
+    for keyword, group in local_df.groupby('Keyword', sort=False):
+        weighted_rows.append({
+            'Keyword': keyword,
+            'Video_Count': len(group),
+            'Weighted_Avg_Views': np.average(group['Views'], weights=group['Recency_Weight']),
+            'Weighted_Avg_Engagement': np.average(group['Engagement_Rate'], weights=group['Recency_Weight']),
+            'Latest_Video_Date': group['Published At'].max(),
+        })
+
+    weighted = pd.DataFrame(weighted_rows)
 
     baseline = (
         local_df.groupby('Keyword')
