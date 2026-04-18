@@ -43,6 +43,12 @@ def build_parser():
         default="data/cleaned_youtube_data.csv",
         help="Path to save the cleaned merged dataset",
     )
+    parser.add_argument(
+        "--half-life-days",
+        type=float,
+        default=30,
+        help="Recency half-life in days for momentum nowcast output",
+    )
     return parser
 
 
@@ -72,6 +78,7 @@ def main():
         videos_clean,
         comments_df=comments_clean,
         output_dir=output_dir,
+        half_life_days=args.half_life_days,
     )
 
     growth_path = output_dir / "channel_growth_summary.csv"
@@ -84,6 +91,7 @@ def main():
     print(f"Videos analyzed: {summary['total_videos']:,}")
     print(f"Comments analyzed: {len(comments_clean):,}")
     print(f"Categories analyzed: {summary['categories_count']}")
+    print(f"Momentum half-life (days): {args.half_life_days}")
     print("Output files:")
     print(f"- {cleaned_output}")
     print(f"- {growth_path}")
