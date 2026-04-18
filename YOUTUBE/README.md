@@ -130,6 +130,7 @@ python src/analysis.py
  - `analyze_publish_timing()`: Best day-of-week publish windows
  - `build_engagement_confidence_intervals()`: Bootstrap confidence intervals by category
  - `generate_content_strategy_recommendations()`: Category-level growth actions and risk flags
+ - `build_recency_weighted_category_momentum()`: Recency-weighted momentum nowcast by category
  - `export_advanced_outputs()`: Exports full analytics artifact pack to CSV/JSON
 
 ### End-to-End Pipeline Runner
@@ -162,8 +163,12 @@ Advanced pipeline outputs include:
  - `data/strategy_recommendations.csv`
  - `data/engagement_ci_by_category.csv`
  - `data/next_month_category_forecast.csv`
+ - `data/category_momentum_nowcast.csv`
  - `data/viral_videos_95pct.csv`
  - `data/analysis_summary.json`
+
+Optional advanced parameter:
+- `--half-life-days`: Sets recency decay speed for momentum nowcast (default: `30`)
 
 ### Modify Analysis Parameters
 
