@@ -433,6 +433,71 @@ def forecast_next_month_category_performance(df, min_points=3):
     return forecast.sort_values('Forecast_Momentum_Score', ascending=False).reset_index(drop=True)
 
 
+def build_recency_weighted_category_momentum(df, half_life_days=30):
+    """
+    Build a recency-weighted category momentum table.
+
+    Recent videos contribute more weight using exponential decay so this acts
+    as a practical nowcast signal for near-term content planning.
+
+    Args:
+        df: Cleaned videos DataFrame
+        half_life_days: Number of days for weight to decay by 50%
+
+    Returns:
+        DataFrame: Category momentum nowcast metrics
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    local_df = df.copy()
+    reference_date = local_df['Published At'].max()
+    age_days = (reference_date - local_df['Published At']).dt.days.clip(lower=0)
+
+    safe_half_life = max(float(half_life_days), 1.0)
+    decay_lambda = np.log(2) / safe_half_life
+    local_df['Recency_Weight'] = np.exp(-decay_lambda * age_days)
+
+    weighted = (
+        local_df.groupby('Keyword')
+        .apply(
+            lambda g: pd.Series({
+                'Video_Count': len(g),
+                'Weighted_Avg_Views': np.average(g['Views'], weights=g['Recency_Weight']),
+                'Weighted_Avg_Engagement': np.average(g['Engagement_Rate'], weights=g['Recency_Weight']),
+                'Latest_Video_Date': g['Published At'].max(),
+            })
+        )
+        .reset_index()
+    )
+
+    baseline = (
+        local_df.groupby('Keyword')
+        .agg(
+            Baseline_Avg_Views=('Views', 'mean'),
+            Baseline_Avg_Engagement=('Engagement_Rate', 'mean')
+        )
+        .reset_index()
+    )
+
+    momentum = weighted.merge(baseline, on='Keyword', how='left')
+    momentum['Views_Momentum_Ratio'] = momentum['Weighted_Avg_Views'] / momentum['Baseline_Avg_Views'].replace(0, np.nan)
+    momentum['Engagement_Momentum_Ratio'] = (
+        momentum['Weighted_Avg_Engagement'] / momentum['Baseline_Avg_Engagement'].replace(0, np.nan)
+    )
+
+    momentum = momentum.replace([np.inf, -np.inf], np.nan)
+    momentum['Views_Momentum_Ratio'] = momentum['Views_Momentum_Ratio'].fillna(1.0)
+    momentum['Engagement_Momentum_Ratio'] = momentum['Engagement_Momentum_Ratio'].fillna(1.0)
+
+    momentum['Momentum_Score'] = (
+        momentum['Views_Momentum_Ratio'] * 0.65 +
+        momentum['Engagement_Momentum_Ratio'] * 0.35
+    )
+
+    return momentum.sort_values('Momentum_Score', ascending=False).reset_index(drop=True)
+
+
 def create_summary_statistics(df):
     """
     Generate comprehensive summary statistics
@@ -629,7 +694,7 @@ def generate_content_strategy_recommendations(df, comments_df=None, min_videos=5
     return base.sort_values('Composite_Score', ascending=False).reset_index(drop=True)
 
 
-def export_advanced_outputs(df, comments_df=None, output_dir='../data'):
+def export_advanced_outputs(df, comments_df=None, output_dir='../data', half_life_days=30):
     """
     Export a richer set of analytics artifacts for decision making.
 
@@ -637,6 +702,7 @@ def export_advanced_outputs(df, comments_df=None, output_dir='../data'):
         df: Cleaned videos DataFrame
         comments_df: Optional cleaned comments DataFrame
         output_dir: Directory for output CSV/JSON files
+        half_life_days: Half-life parameter for recency-weighted momentum
 
     Returns:
         dict: Named output file paths
@@ -651,6 +717,7 @@ def export_advanced_outputs(df, comments_df=None, output_dir='../data'):
     strategy = generate_content_strategy_recommendations(df, comments_df=comments_df)
     timing = analyze_publish_timing(df)
     freq_sig, _ = analyze_upload_frequency_vs_views(df)
+    momentum = build_recency_weighted_category_momentum(df, half_life_days=half_life_days)
 
     files = {
         'category_scorecard': output_path / 'category_scorecard.csv',
@@ -660,6 +727,7 @@ def export_advanced_outputs(df, comments_df=None, output_dir='../data'):
         'strategy': output_path / 'strategy_recommendations.csv',
         'publish_timing': output_path / 'publish_timing_recommendations.csv',
         'upload_frequency_significance': output_path / 'upload_frequency_significance.csv',
+        'category_momentum_nowcast': output_path / 'category_momentum_nowcast.csv',
         'summary_json': output_path / 'analysis_summary.json'
     }
 
@@ -670,10 +738,13 @@ def export_advanced_outputs(df, comments_df=None, output_dir='../data'):
     strategy.to_csv(files['strategy'], index=False)
     timing.to_csv(files['publish_timing'], index=False)
     freq_sig.to_csv(files['upload_frequency_significance'], index=False)
+    momentum.to_csv(files['category_momentum_nowcast'], index=False)
 
     summary = create_summary_statistics(df)
     summary['generated_at_utc'] = datetime.utcnow().isoformat()
     summary['top_strategy_categories'] = strategy['Keyword'].head(5).tolist() if not strategy.empty else []
+    summary['top_momentum_categories'] = momentum['Keyword'].head(5).tolist() if not momentum.empty else []
+    summary['recency_half_life_days'] = half_life_days
     with open(files['summary_json'], 'w', encoding='utf-8') as fp:
         json.dump(summary, fp, indent=2, default=str)
 
